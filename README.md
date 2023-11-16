@@ -1,2 +1,2 @@
-# OpenAI Assistant that servers knowledge about Apache Camel
+# OpenAI Assistant that serves knowledge about Apache Camel
 
