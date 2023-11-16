@@ -13,10 +13,7 @@ import numpy as np
 from openai.embeddings_utils import distances_from_embeddings, cosine_similarity
 from ast import literal_eval
 
-
-# Define root domain to crawl
-domain = "camel.apache.org"
-full_url = "https://camel.apache.org/components/4.0.x/"
+from conf.constants import domain, full_url
 
 ################################################################################
 ### Step 5

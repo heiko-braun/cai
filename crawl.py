@@ -13,12 +13,11 @@ import numpy as np
 from openai.embeddings_utils import distances_from_embeddings, cosine_similarity
 from ast import literal_eval
 
+from conf.constants import domain, full_url
+
 # Define OpenAI api_key
 # openai.api_key = '<Your API Key>'
 
-# Define root domain to crawl
-domain = "camel.apache.org"
-full_url = "https://camel.apache.org/components/4.0.x"
 
 def relevant_content_links(body):
     relevant_links = []
@@ -53,6 +52,7 @@ def crawl(url):
                 print("Unable to parse page " + url + " due to JavaScript being required")
         
             # Otherwise, write the text to the file in the text directory
+            f.write("Article source: "+url+"\n\n")
             f.write(text)
     except Exception as e:
         print("Unable to parse page " + url)
