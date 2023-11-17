@@ -59,6 +59,8 @@ Prompt: How do I perform content filtering in Camel? Show me an example.
 
 [...]
 
+#### Results
+
 `user:` How do I perform content filtering in Camel? Show me an example.
 
 `assistant:` To perform content filtering in Apache Camel, you can use various mechanisms in the routing logic to transform content from the inbound message. Here are some examples:
