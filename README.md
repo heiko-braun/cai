@@ -55,6 +55,8 @@ python assistant.py
 
 Prompt: How do I perform content filtering in Camel? Show me an example.
 
+```
+
 [...]
 
 `user:` How do I perform content filtering in Camel? Show me an example.
@@ -90,4 +92,3 @@ from("activemq:Input")
 ```
 
 These examples demonstrate how to perform content filtering in Apache Camel using different mechanisms in the routing logic, such as Processor, Bean EIP, and Expression.
-```
