@@ -6,8 +6,6 @@ from collections import deque
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 import os
-import pandas as pd
-import numpy as np
 
 from conf.constants import *
 
