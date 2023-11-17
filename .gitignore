@@ -3,3 +3,5 @@ data/text
 data/processed
 setup.sh
 conf/__pycache__
+util/__pycache__
+__pycache__/
