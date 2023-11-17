@@ -7,7 +7,7 @@ import json
 import os
 import fnmatch
 
-CAMEL_ASSISTANT_ID = "asst_fDhS4RtIoMERSIaCBPtwPZES"
+from conf.constants import *
 
 client = OpenAI()
 
@@ -62,7 +62,7 @@ def fetch_docs(component_name):
         return "No matching file found for "+component_name        
                 
 def find_files(keyword):    
-    path = './text/camel.apache.org'
+    path = TEXT_DIR+DOMAIN
     # List all files in the directory and its subdirectories
     files = []
     for root, directories, file_path in os.walk(path, topdown=False):
