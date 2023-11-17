@@ -9,12 +9,45 @@ conda create --name camel python=3.11
 conda activate camel
 pip install -r requirements.txt
 ```
-
-## Usage
-
 ### Prerequisites
 
-- Make sure you have set the `OPENAI_API_KEY` environment variable (https://platform.openai.com/api-keys).
+#### OPENAI_API_KEY
+
+Make sure you have set the `OPENAI_API_KEY` environment variable (https://platform.openai.com/api-keys).
+
+#### Ready-made assistant
+
+I am leveraging a ready-made assistant with some instruction-tuning:
+
+```
+You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework. 
+
+You should only answer based on the files found or any function provided. 
+```
+
+But more importantly a custom function:
+
+```
+{
+  "name": "fetch_camel_docs",
+  "description": "Retrieve additional documentation about Apache Camel",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "component": {
+        "type": "string",
+        "description": "The name of a Camel component"
+      }
+    },
+    "required": [
+      "component"
+    ]
+  }
+}
+```
+
+
+## Usage
 
 ### Step 1: Prepapre the local data
 
