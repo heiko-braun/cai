@@ -7,17 +7,9 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 import os
 import pandas as pd
-import tiktoken
-import openai
 import numpy as np
-from openai.embeddings_utils import distances_from_embeddings, cosine_similarity
-from ast import literal_eval
 
-from conf.constants import domain, full_url
-
-# Define OpenAI api_key
-# openai.api_key = '<Your API Key>'
-
+from conf.constants import *
 
 def relevant_content_links(body):
     relevant_links = []
@@ -39,7 +31,7 @@ def crawl(url):
     # Try extracting the text from the link, if failed proceed with the next item in the queue
     try:
         # Save text from the url to a <url>.txt file
-        with open('text/'+domain+'/'+url[8:].replace("/", "_") + ".txt", "w", encoding="UTF-8") as f:
+        with open(TEXT_DIR+DOMAIN+'/'+url[8:].replace("/", "_") + ".txt", "w", encoding="UTF-8") as f:
 
             # Get the text from the URL using BeautifulSoup
             soup = BeautifulSoup(requests.get(url).text, "html.parser")
@@ -59,7 +51,7 @@ def crawl(url):
         print(e)
 
 def remove_data_dir(): 
-    dir = "texts/"
+    dir = TEXT_DIR
     if os.path.exists(dir):
         for the_file in os.listdir(dir):
             file_path = os.path.join(dir, the_file)
@@ -74,15 +66,15 @@ def remove_data_dir():
      
 def create_data_dir(): 
     # Create a directory to store the text files
-    if not os.path.exists("text/"):
-            os.mkdir("text/")
+    if not os.path.exists(TEXT_DIR):
+            os.mkdir(TEXT_DIR)
 
-    if not os.path.exists("text/"+domain+"/"):
-            os.mkdir("text/" + domain + "/")
+    if not os.path.exists(TEXT_DIR+DOMAIN+"/"):
+            os.mkdir(TEXT_DIR + DOMAIN + "/")
 
     # Create a directory to store the csv files
-    if not os.path.exists("processed"):
-            os.mkdir("processed")
+    if not os.path.exists(PROCESSED_DIR):
+            os.mkdir(PROCESSED_DIR)
             
 
 ##
@@ -93,7 +85,7 @@ def create_data_dir():
 remove_data_dir()
 
 # grab the relevant links 
-entry_point = urllib.request.urlopen(full_url).read()
+entry_point = urllib.request.urlopen(FULL_URL).read()
 content_links = relevant_content_links(entry_point)
 print('Found {0} links to relevant content'.format(len(content_links)))
 
@@ -102,6 +94,6 @@ create_data_dir()
 
 # Parse each link one by one
 for path in content_links:
-    crawl(full_url+"/"+path)
+    crawl(FULL_URL+"/"+path)
    
 
