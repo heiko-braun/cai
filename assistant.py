@@ -11,6 +11,7 @@ from conf.constants import *
 
 client = OpenAI()
 
+
 def get_response(thread):
     return client.beta.threads.messages.list(thread_id=thread.id, order="asc")
 
@@ -91,7 +92,7 @@ message = client.beta.threads.messages.create(
 # Kickoff the thread 
 run = client.beta.threads.runs.create(
     thread_id=thread.id,
-    assistant_id=CAMEL_ASSISTANT_ID,
+    assistant_id=ASSISTANT_ID,
 )
 
 # Wait for completion

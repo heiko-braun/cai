@@ -15,9 +15,11 @@ pip install -r requirements.txt
 
 Make sure you have set the `OPENAI_API_KEY` environment variable (https://platform.openai.com/api-keys).
 
-#### Ready-made assistant
+#### ASSISTANT_ID
 
-I am leveraging a ready-made assistant with some instruction-tuning:
+Make sure you have set the `ASSISTANT_ID` environment variable, pointing to the assistant that leverages the right function (below).
+
+The assistant shpould be prepared with some instruction-tuning:
 
 ```
 You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework. 
@@ -25,7 +27,7 @@ You are an assistant helping software developers create integrations with third-
 You should only answer based on the files found or any function provided. 
 ```
 
-But more importantly a custom function:
+But more importantly it needs the following custom function:
 
 ```
 {
