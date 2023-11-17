@@ -17,9 +17,9 @@ Make sure you have set the `OPENAI_API_KEY` environment variable (https://platfo
 
 #### ASSISTANT_ID
 
-Make sure you have set the `ASSISTANT_ID` environment variable, pointing to the assistant that leverages the right function (below).
+Make sure you have set the `ASSISTANT_ID` environment variable, pointing to the assistant that leverages the right function (below) (https://platform.openai.com/assistants).
 
-The assistant shpould be prepared with some instruction-tuning:
+The assistant should be prepared with some instruction-tuning:
 
 ```
 You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework. 
