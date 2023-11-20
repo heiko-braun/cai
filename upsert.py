@@ -12,6 +12,12 @@ from multiprocess import Process, Queue
 import time
 import queue # imported for using queue.Empty exception
 
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+)
+
 # ---
 
 def read_file(filename):
@@ -25,6 +31,7 @@ def n_words(text, size):
     return n_words
 
 # create an embedding using openai
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
 def get_embedding(openai_client, text, model="text-embedding-ada-002"):
    start = time.time()
    text = text.replace("\n", " ")
@@ -47,6 +54,7 @@ PROMPT_TEMPLATE = PromptTemplate.from_template(
         - Apache Camel
         - Java 
         - Maven 
+        - Configuring Options
         
         Text: \"\"\"{text}\"\"\"
 
@@ -54,6 +62,7 @@ PROMPT_TEMPLATE = PromptTemplate.from_template(
     )
 
 # extract keywords using the chat API with custom prompt
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
 def extract_keywords(openai_client, document):
     start = time.time()
     message = PROMPT_TEMPLATE.format(text=n_words(document, 3000))
@@ -95,8 +104,8 @@ create_qdrant_client().recreate_collection(
 
 # Dataset to be upserted
 docfiles = []
-for file in glob.glob(TEXT_DIR+DOMAIN+"/*.txt"):
-    docfiles.append(file)
+for _file in glob.glob(TEXT_DIR+DOMAIN+"/*.txt"):
+    docfiles.append(_file)
 
 print("Upserting N files: ", len(docfiles))
 
@@ -124,7 +133,8 @@ def do_job(tasks_to_accomplish):
                 openai_client = create_openai_client()    
                 qdrant_client = create_qdrant_client()
 
-                test_doc = read_file(task["file"])
+                filename = task["file"]
+                test_doc = read_file(filename)
                 
                 # extract keywords
                 entities = extract_keywords(openai_client, test_doc)
@@ -140,17 +150,17 @@ def do_job(tasks_to_accomplish):
                             id=task["idx"],
                             vector=embeddings,
                             payload={
-                                "filename": file,
+                                "filename": filename,
                                 "entities": entities            
                             }
                         )
                     ]        
                 )
                 
-                print(file, " completed \n")
+                print(filename, " completed \n")
                 
             except Exception as e:
-                print("Failed to process file (skipping ... ): "+ file)
+                print("Failed to process file (skipping ... ): "+ filename)
                 traceback.print_exc()
                 continue            
             
