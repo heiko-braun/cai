@@ -1,16 +1,23 @@
 from openai import OpenAI
 from util.utils import show_json, as_json
 import time
-import sys
 import jmespath
 import json
-import os
-import fnmatch
+import httpx
+
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+
 
 from conf.constants import *
 
-client = OpenAI()
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
+# ---
 
 def get_response(thread):
     return client.beta.threads.messages.list(thread_id=thread.id, order="asc")
@@ -54,29 +61,64 @@ def get_call_arguments(run):
 # search local storage for documentation related to componment    
 def fetch_docs(component_name):  
     print("Fetching docs for ", component_name)  
-    num_matches, matching_files = find_files(component_name)
+    
+    query_results = query_qdrant(component_name)
+    num_matches = len(query_results)
+    print("Found N matches: ", num_matches)
+
+    for i, article in enumerate(query_results):    
+        print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
+
     if num_matches > 0:
-        with open(matching_files[0]) as f:
+        doc = query_results[0]
+        with open(doc.payload["filename"]) as f:
             contents = f.read()
             return contents
     else:
         return "No matching file found for "+component_name        
                 
-def find_files(keyword):    
-    path = TEXT_DIR+DOMAIN
-    # List all files in the directory and its subdirectories
-    files = []
-    for root, directories, file_path in os.walk(path, topdown=False):
-        for name in file_path:
-            files.append(os.path.join(root, name))
+def query_qdrant(query, top_k=5):
+    openai_client = create_openai_client()
+    qdrant_client = create_qdrant_client()
 
-    # Find files that contain the keyword in their name
-    matching_files = [filename for filename in files if fnmatch.fnmatch(filename, f'*{keyword}*')]
-    num_matches = len(matching_files)
-    print("Num matches: ", num_matches)
-    return num_matches, matching_files
+    embedded_query = get_embedding(openai_client=openai_client, text=query)
     
-        
+    query_results = qdrant_client.search(
+        collection_name="camel_docs",
+        query_vector=(embedded_query),
+        limit=top_k,
+    )
+    
+    return query_results
+
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+def get_embedding(openai_client, text, model="text-embedding-ada-002"):
+   start = time.time()
+   text = text.replace("\n", " ")
+   resp = openai_client.embeddings.create(input = [text], model=model)
+   print("Embedding ms: ", time.time() - start)
+   return resp.data[0].embedding
+
+def create_openai_client():
+    client = OpenAI(
+        timeout=httpx.Timeout(
+            10.0, read=8.0, write=3.0, connect=3.0
+            )
+    )
+    return client
+
+def create_qdrant_client(): 
+    client = QdrantClient(
+       QDRANT_URL,
+        api_key=QDRANT_KEY,
+    )
+    return client
+            
+
+# ---
+         
+client = create_openai_client()
+
 # Start a new Thread
 thread = client.beta.threads.create()
 show_json(thread)
