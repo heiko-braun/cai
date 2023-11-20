@@ -13,3 +13,16 @@ except KeyError:
     print('ASSISTANT_ID is missing!')
     sys.exit()
 
+QDRANT_KEY = None
+try:
+    QDRANT_KEY = os.environ['QDRANT_KEY']
+except KeyError:
+    print('QDRANT_KEY is missing!')
+    sys.exit()
+
+QDRANT_URL = None
+try:
+    QDRANT_URL = os.environ['QDRANT_URL']
+except KeyError:
+    print('QDRANT_URL is missing!')
+    sys.exit()

@@ -5,3 +5,5 @@ urllib3==1.26.13
 requests
 jmespath
 langchain
+qdrant-client
+multiprocess
