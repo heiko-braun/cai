@@ -59,10 +59,10 @@ def get_call_arguments(run):
     return call_arguments 
     
 # search local storage for documentation related to componment    
-def fetch_docs(component_name):  
-    print("Fetching docs for ", component_name)  
+def fetch_docs(entities):  
+    print("Fetching docs for query: ", entities)  
     
-    query_results = query_qdrant(component_name)
+    query_results = query_qdrant(entities)
     num_matches = len(query_results)
     print("Found N matches: ", num_matches)
 
@@ -75,7 +75,7 @@ def fetch_docs(component_name):
             contents = f.read()
             return contents
     else:
-        return "No matching file found for "+component_name        
+        return "No matching file found for "+entities        
                 
 def query_qdrant(query, top_k=5):
     openai_client = create_openai_client()
@@ -149,7 +149,8 @@ if(run.status == "requires_action"):
     outputs=[]              
     
     for a in args:
-        doc = fetch_docs(a["call_arguments"]["component"])      
+        entity_args = a["call_arguments"]["entities"]
+        doc = fetch_docs(' '.join(entity_args))      
         outputs.append(
             {
                 "tool_call_id": a["call_id"],
