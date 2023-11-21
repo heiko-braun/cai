@@ -1,0 +1,7 @@
+In my case my client is requesting the java object as byte array. same way im converting my java object into byte array and sending it but client not able to de serialize the object even if we are using the same serial version id.
+
+any properties need to set in the camel route?
+
+from("direct:xxx") .log("REQUEST: ${body}") .to("jms:queue:INPUTQUEUE?connectionFactory=#connectionFactoryAdapter&replyTo=RECEIVE.QUEUE&requestTimeout=2000&includeSentJMSMessageID=true&useMessageIDAsCorrelationID=true") .log("RESPONSE: ${body}");
+
+Need to send java object as byte array in Apache camel message body.
