@@ -1,0 +1,7 @@
+I am trying to setup spring boot application that needs to consume messages from an IBM MQ queue while ensuring that only one instance of the application receives all messages to maintain message ordering. To achieve this, I need to configure the Camel consumer to open a connection with the MQOO_INPUT_EXCLUSIVE option enabled.
+
+I have already set up the JmsComponent, MQQueueConnectionFactory and RouteBuilder in my application, but I couldn't find the property key and value to enable the MQOO_INPUT_EXCLUSIVE option for the connection via MQQueueConnectionFactory.
+
+Tried this approach by changing the Default input open option in the queue setting and it works, but is there a way to achieve this by passing this property while opening connection?
+
+I have tried searching online for information on how to set this option, but I haven't been able to find a solution,the results were either not relevant to camel based configuration or those were outdated. Can anyone help me with this? Any help would be greatly appreciated!
