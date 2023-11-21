@@ -1,0 +1,1 @@
+I created new apache camel route scheduler and I want to be invoked by multiple threads on an interval. want to execute x number of threads. I am unsure how to go about it

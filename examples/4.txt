@@ -1,0 +1,5 @@
+I am copying file from ftp to local system and file is in gigs. I notice that each time when I tried to copy file in iteration it overrides the content.
+
+Tried using .done extension but didn't worked also tried to copy file to another folder but that's also overlapping.
+
+How can I make this work?

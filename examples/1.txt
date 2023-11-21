@@ -1,0 +1,5 @@
+I am using the Kafka Consumer Component with Apache Camel 4.1.0 and Spring-Boot 3.1.5. To test message processing, I use a Kafka Testcontainer (one broker, one partition) and publish one test message per test-case to be processed. Surprisingly, the Camel Kafka consumer always picks up the test message twice, except for the very first test case in a test suite; here is a Camel trace log snippet:
+
+To my understanding the Kafka component should automatically commit received messages, so duplicates should be an exception instead of the norm (the above happens reproducibly on every test case except the first one) and a Camel route should run to completion before a new message is polled from Kafka.
+
+What am I missing here? What could be an explanation for the observed behavior? Is it possible that the Kafka Consumer component has been started multiple times?

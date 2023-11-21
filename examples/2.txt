@@ -1,0 +1,5 @@
+I want to convert dataweave language script to JSONATA expressions. In that I am getting data in variables in DWL. I need to implements same variable functionality in JSONATA also. And If I pass any data from variable in apache camal how to read it in JSONATA
+
+I have some data in varibale in apache camal. I need to do mapping in JSONATA.
+
+I want to create some local variables in JSONATA for doing some complex mapping.

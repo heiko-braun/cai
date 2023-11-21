@@ -1,0 +1,13 @@
+I have a Spring Boot Camel application that is consuming messages from an SQS Queue. The queue is set up to extend the Message Visibility.
+
+Due to an as-yet un-diagnosed problem it seems like a number of messages have had their Message Visibility Timeout extended to be greater than the maximum allowed by SQS ( 12 hours ). I see this in my log, with this message
+
+Total VisibilityTimeout for the message is beyond the limit [43200 seconds]. (Service: AmazonSQS; Status Code: 400; Error Code: InvalidParameterValue; Request ID: 55988753-658c-562b-8c04-daf37c9efc70)
+
+I can then see that the Camel component continues trying the extend the Message Visibility Timeout, and it looks like it's going to keep trying the extend it for ever. These requests result in the following exception message in my logs.
+
+ReceiptHandle is invalid. Reason: The receipt handle has expired. 
+
+As far as I can see, the route is using the default Camel error handler.
+
+I know that I need to understand why these messages aren't being processed correctly by my consumer, but should I expect Camel to react ike it is doing?
