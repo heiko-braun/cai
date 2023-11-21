@@ -19,6 +19,8 @@ from tenacity import (
 from statemachine import State
 from statemachine import StateMachine
 
+import argparse
+
 # ---
 
 def get_response(client, thread):
@@ -208,7 +210,19 @@ class Assistant(StateMachine):
         # thread complete, show answer
         pretty_print(get_response(self.openai_client, self.thread))
 
-                
+# --
+parser = argparse.ArgumentParser(description='Camel Docs Assistant')
+parser.add_argument('-f', '--filename', help='The inut file that will be taken as a prompt', required=False)
+args = parser.parse_args()
+
+if(args.filename == None):
+    prompt = input("Prompt: ")  
+else:
+    with open(args.filename) as f:
+        prompt = f.read()        
+    prompt = prompt.replace('\n', ' ').replace('\r', '')        
+    
+    
 sm = Assistant()        
-sm.kickoff(input("Prompt: "))
+sm.kickoff(prompt)
 
