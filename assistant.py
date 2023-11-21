@@ -210,6 +210,9 @@ class Assistant(StateMachine):
         # thread complete, show answer
         pretty_print(get_response(self.openai_client, self.thread))
 
+        # delete the thread
+        self.openai_client.beta.threads.delete(self.thread.id)
+
 # --
 parser = argparse.ArgumentParser(description='Camel Docs Assistant')
 parser.add_argument('-f', '--filename', help='The inut file that will be taken as a prompt', required=False)
