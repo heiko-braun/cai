@@ -1,0 +1,16 @@
+I am using apache camel 2.18.0 version.
+
+I am using seda queue with concurrent consumers option. What I am looking for is a way to control how long a message can remain in the queue itself.
+
+For ex: Say a timeout configuration is set for 2 min, and once the message reached the queue, if it stays for more than 2 min, exception should be thrown.
+
+In seda documentation this timeout  property is available
+
+for ex: from("direct:start").to("seda:queue?timeout=120000"); // 2 minutes (in milliseconds)
+
+But this means message should reach the queue in 2min.
+
+So, if there is no such property to cause timeout on message age in a queue, is it true that
+
+Messages can stay in the queue until they are dequeued for processing?
+If I want to control how long messages can stay in the queue, I may need to implement custom logic in application to periodically check and remove messages from the queue if they exceed a certain age?

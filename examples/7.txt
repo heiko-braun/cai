@@ -1,0 +1,8 @@
+This is my route
+
+    from("sftp://userName:password@ip:22/<my-folder>?move=.done")
+        .routeId("my-route-1")
+        .<processing-logic>
+
+        
+How to avoid processing the same files incase of multiple instances?
