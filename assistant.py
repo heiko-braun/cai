@@ -22,6 +22,8 @@ from statemachine import StateMachine
 import argparse
 import cohere
 
+import streamlit as st
+
 # ---
 
 def get_response(client, thread):
@@ -70,8 +72,9 @@ def fetch_docs(entities):
     query_results = query_qdrant(entities)
     num_matches = len(query_results)
     
-    #for i, article in enumerate(query_results):    
-    #   print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
+    # print("First glance matches:")
+    # for i, article in enumerate(query_results):    
+    #    print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
 
     if num_matches > 0:
 
@@ -144,6 +147,7 @@ def create_qdrant_client():
          
 class Assistant(StateMachine):
     "Assistant state machine"
+
     prompt = State(initial=True)
     running = State()
     lookup = State()
@@ -154,21 +158,36 @@ class Assistant(StateMachine):
     docs_supplied = lookup.to(running)
     resolved = running.to(answered)
 
-    def __init__(self):
+    def __init__(self, st_callback=None):
+        
+        # streamlit callback, if present
+        self.st_callback = st_callback
+
+        # internal states
         self.prompt_text = None
         self.thread = None
         self.run = None
-
+        
         self.openai_client = create_openai_client()
         self.lookups_total = 0        
         
         super().__init__()
+
+    def display_message(self, message):
+        if self.st_callback is not None:
+            st.session_state.messages.append({"role": "assistant", "content": message})
+            with st.chat_message("assistant"):
+                st.markdown(message, unsafe_allow_html=True)      
         
     def on_exit_prompt(self, text):
         self.prompt_text = text        
 
+        if(self.st_callback is not None):
+            self.st_callback.empty()
+                    
         # start a new thread
         self.thread = self.openai_client.beta.threads.create()
+        print("New Thread: ", self.thread.id)
 
         # Add initial message
         message = self.openai_client.beta.threads.messages.create(
@@ -184,6 +203,13 @@ class Assistant(StateMachine):
         )
 
     def on_enter_lookup(self):
+        if(self.st_callback is None):
+            self._on_enter_lookup()
+        else:
+            with self.st_callback.spinner('Lookup additional information ...'):    
+                self._on_enter_lookup()
+
+    def _on_enter_lookup(self):
         print("Lookup requested")
         self.lookups_total = self.lookups_total +1
 
@@ -210,11 +236,17 @@ class Assistant(StateMachine):
         
         self.docs_supplied()
 
-
+    # starting a thinking loop
     def on_enter_running(self):
         print("Enter running ...")   
 
-        # wait for completion
+        if(self.st_callback is None):
+            self._on_enter_running()
+        else:                    
+            with self.st_callback.spinner('Thinking ...'):    
+                self._on_enter_running()
+
+    def _on_enter_running(self):
         self.run = wait_on_run(self.openai_client, self.run, self.thread)        
 
         if(self.run.status == "requires_action"):            
@@ -225,28 +257,36 @@ class Assistant(StateMachine):
             print("Illegal state: ", self.run.status)            
             print(self.run.last_error)
             
-
+    # the assistant has resolved the question
     def on_enter_answered(self):
 
         # thread complete, show answer
-        pretty_print(get_response(self.openai_client, self.thread))
+        assistant_response = get_response(self.openai_client, self.thread)
+        for m in assistant_response:
+            if(m.role == "assistant"):
+                self.display_message(m.content[0].text.value)
+
+        pretty_print(assistant_response)
 
         # delete the thread
         self.openai_client.beta.threads.delete(self.thread.id)
+        print("Deleted Thread: ", self.thread.id)
 
 # --
-parser = argparse.ArgumentParser(description='Camel Docs Assistant')
-parser.add_argument('-f', '--filename', help='The inut file that will be taken as a prompt', required=False)
-args = parser.parse_args()
 
-if(args.filename == None):
-    prompt = input("Prompt: ")  
-else:
-    with open(args.filename) as f:
-        prompt = f.read()        
-    prompt = prompt.replace('\n', ' ').replace('\r', '')        
-    
-    
-sm = Assistant()        
-sm.kickoff(prompt)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Camel Docs Assistant')
+    parser.add_argument('-f', '--filename', help='The inut file that will be taken as a prompt', required=False)
+    args = parser.parse_args()
+
+    if(args.filename == None):
+        prompt = input("Prompt: ")  
+    else:
+        with open(args.filename) as f:
+            prompt = f.read()        
+        prompt = prompt.replace('\n', ' ').replace('\r', '')        
+        
+        
+    sm = Assistant()        
+    sm.kickoff(prompt)
 

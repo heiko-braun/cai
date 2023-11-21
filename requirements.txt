@@ -11,3 +11,4 @@ tenacity
 statemachine
 argparse
 cohere
+streamlit
