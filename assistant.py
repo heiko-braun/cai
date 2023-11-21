@@ -8,7 +8,6 @@ import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-
 from conf.constants import *
 
 from tenacity import (
@@ -17,9 +16,12 @@ from tenacity import (
     wait_random_exponential,
 )
 
+from statemachine import State
+from statemachine import StateMachine
+
 # ---
 
-def get_response(thread):
+def get_response(client, thread):
     return client.beta.threads.messages.list(thread_id=thread.id, order="asc")
 
 def pretty_print(messages):
@@ -39,7 +41,7 @@ def wait_on_run(client, run, thread):
         time.sleep(0.5)        
     return run    
 
-# fetche the call arguments from an assistant callback
+# fetch the call arguments from an assistant callback
 def get_call_arguments(run):    
     tool_calls = jmespath.search(
         "required_action.submit_tool_outputs.tool_calls", 
@@ -117,61 +119,94 @@ def create_qdrant_client():
 
 # ---
          
-client = create_openai_client()
+class Assistant(StateMachine):
+    "Assistant state machine"
+    prompt = State(initial=True)
+    running = State()
+    lookup = State()
+    answered = State(final=True)
 
-# Start a new Thread
-thread = client.beta.threads.create()
-show_json(thread)
+    kickoff = prompt.to(running)
+    request_docs = running.to(lookup)
+    docs_supplied = lookup.to(running)
+    resolved = running.to(answered)
 
-# Add messages
-prompt = input("Prompt: ")
-message = client.beta.threads.messages.create(
-    thread_id=thread.id,
-    role="user",
-    content=prompt,
-)
+    def __init__(self):
+        self.prompt_text = None
+        self.thread = None
+        self.run = None
 
-# Kickoff the thread 
-run = client.beta.threads.runs.create(
-    thread_id=thread.id,
-    assistant_id=ASSISTANT_ID,
-)
+        self.openai_client = create_openai_client()
+        self.lookups_total = 0        
+        
+        super().__init__()
+        
+    def on_exit_prompt(self, text):
+        self.prompt_text = text        
 
-# Wait for completion
-run = wait_on_run(client, run, thread)
+        # start a new thread
+        self.thread = self.openai_client.beta.threads.create()
 
-# Eventually we get a callback requesting a function call
-is_function_call = False
-if(run.status == "requires_action"):      
-    is_function_call = True
-    args = get_call_arguments(run)
-
-    outputs=[]              
-    
-    for a in args:
-        entity_args = a["call_arguments"]["entities"]
-        doc = fetch_docs(' '.join(entity_args))      
-        outputs.append(
-            {
-                "tool_call_id": a["call_id"],
-                "output": "'"+doc+"'"
-            }
+        # Add initial message
+        message = self.openai_client.beta.threads.messages.create(
+            thread_id=self.thread.id,
+            role="user",
+            content=text,
         )
-    
-    run = client.beta.threads.runs.submit_tool_outputs(
-        thread_id=thread.id,
-        run_id=run.id,
-        tool_outputs=outputs
-        )    
 
-if(is_function_call):    
-    run = wait_on_run(client, run, thread)
-    if(run.status == "completed"):
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        pretty_print(get_response(thread))
-    else:
-        show_json(run) # stop here for now. in reality it might be recursive
-else:
-    # Now that the Run has completed, we can list the Messages
-    messages = client.beta.threads.messages.list(thread_id=thread.id)
-    pretty_print(get_response(thread))
+        # create a run
+        self.run = self.openai_client.beta.threads.runs.create(
+            thread_id=self.thread.id,
+            assistant_id=ASSISTANT_ID,
+        )
+
+    def on_enter_lookup(self):
+        print("Lookup requested")
+        self.lookups_total = self.lookups_total +1
+
+        # take call arguments and invoke lookup
+        args = get_call_arguments(self.run)
+        outputs=[]              
+        
+        for a in args:
+            entity_args = a["call_arguments"]["entities"]
+            doc = fetch_docs(' '.join(entity_args))      
+            outputs.append(
+                {
+                    "tool_call_id": a["call_id"],
+                    "output": "'"+doc+"'"
+                }
+            )
+        
+        # submit lookup results (aka tool outputs)
+        self.run = self.openai_client.beta.threads.runs.submit_tool_outputs(
+            thread_id=self.thread.id,
+            run_id=self.run.id,
+            tool_outputs=outputs
+            )    
+        
+        self.docs_supplied()
+
+
+    def on_enter_running(self):
+        print("Enter running ...")   
+
+        # wait for completion
+        self.run = wait_on_run(self.openai_client, self.run, self.thread)        
+
+        if(self.run.status == "requires_action"):            
+            self.request_docs()
+        elif(self.run.status == "completed"):    
+            self.resolved()
+        else:
+            print("Illegal state: ", self.run.status)
+
+    def on_enter_answered(self):
+
+        # thread complete, show answer
+        pretty_print(get_response(self.openai_client, self.thread))
+
+                
+sm = Assistant()        
+sm.kickoff(input("Prompt: "))
+
