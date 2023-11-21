@@ -199,7 +199,9 @@ class Assistant(StateMachine):
         elif(self.run.status == "completed"):    
             self.resolved()
         else:
-            print("Illegal state: ", self.run.status)
+            print("Illegal state: ", self.run.status)            
+            print(self.run.last_error)
+            
 
     def on_enter_answered(self):
 
