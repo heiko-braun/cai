@@ -20,6 +20,7 @@ from statemachine import State
 from statemachine import StateMachine
 
 import argparse
+import cohere
 
 # ---
 
@@ -68,12 +69,32 @@ def fetch_docs(entities):
     
     query_results = query_qdrant(entities)
     num_matches = len(query_results)
-    print("Found N matches: ", num_matches)
-
-    for i, article in enumerate(query_results):    
-        print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
+    
+    #for i, article in enumerate(query_results):    
+    #   print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
 
     if num_matches > 0:
+
+        docs = []
+        for _, article in enumerate(query_results):
+            with open(article.payload["filename"]) as f:                
+                docs.append(f.read())
+
+        # apply reranking
+        co = cohere.Client(os.environ['COHERE_KEY'])
+        rerank_hits = co.rerank(
+            model = 'rerank-english-v2.0',
+            query = entities,
+            documents = docs,
+            top_n = 3
+        )
+
+        print("Reranked matches: ")   
+        for hit in rerank_hits:
+            orig_result = query_results[hit.index]
+            print(f'{orig_result.payload["filename"]} (Score: {round(hit.relevance_score, 3)})')
+            #print(orig_result.payload["filename"])
+
         doc = query_results[0]
         with open(doc.payload["filename"]) as f:
             contents = f.read()
