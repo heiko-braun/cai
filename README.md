@@ -11,9 +11,19 @@ pip install -r requirements.txt
 ```
 ### Prerequisites
 
-#### OPENAI_API_KEY
+#### API Keys
 
-Make sure you have set the `OPENAI_API_KEY` environment variable (https://platform.openai.com/api-keys).
+The all the tools and the assistant leverage 3rd party services for which you need API keys.
+
+Make sure these are present in your environment:
+
+```
+export OPENAI_API_KEY="..."
+export ASSISTANT_ID="..."
+export QDRANT_KEY="..."
+export QDRANT_URL="..."
+export COHERE_KEY="..."
+```
 
 #### ASSISTANT_ID
 
@@ -31,65 +41,63 @@ But more importantly it needs the following custom function:
 
 ```
 {
-  "name": "fetch_camel_docs",
-  "description": "Retrieve additional documentation about Apache Camel",
+  "name": "lookup_docs",
+  "description": "Lookup additonal documentation for camel components",
   "parameters": {
     "type": "object",
     "properties": {
-      "component": {
-        "type": "string",
-        "description": "The name of a Camel component"
+      "entities": {
+        "type": "array",
+        "description": "List of top 5 entities extracted from text",
+        "items": {
+          "type": "string"
+        }
       }
     },
     "required": [
-      "component"
+      "entities"
     ]
   }
 }
 ```
 
 
-## Usage
+## Data Preparation
 
-### Step 1: Prepapre the local data
+### Step 1: Prepare the local data
 
 The current impl serves the main knowledge through local files that have been scraped from the camel documentation.
 
-As a first step you need to prepare the local data:
-
-```
-python crawl.py   
-Found 539 links to relevant content
-
-Parsing ...  https://camel.apache.org/components/4.0.x//index.html
-Parsing ...  https://camel.apache.org/components/4.0.x//index.html
-Parsing ...  https://camel.apache.org/components/4.0.x//activemq-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//amqp-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//arangodb-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//as2-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//asterisk-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//atmosphere-websocket-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//atom-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//avro-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//aws-summary.html
-Parsing ...  https://camel.apache.org/components/4.0.x//aws2-athena-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//aws-cloudtrail-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//aws2-cw-component.html
-Parsing ...  https://camel.apache.org/components/4.0.x//aws2-ddb-component.html
-
-[...]
-
-```
+As a first step you need to prepare the local data using the `crawl` and `upsert` tools available.
 
 Once the process completes, you should have a text-only representation of the documentation under `./data/text/*.*`.
 
-### Step 2: Invoke the assistant
+> Typically this is a one-time step
+
+### Step 2: Upsert the data
+
+The data prepared, needs to be indexed and will be kept in a vector DB to enable semantic search for the agent.
+
+In a second step you need to upsert data using the `upsert` tools available.
+
+Once the process completes, you should have a meta data and vector embeddings in QDrant (http://qdrant.tech/).
+
+> Typically this is a one-time step
+
+
+## Using the assistant
 
 ```
 python assistant.py
 
 Prompt: How do I perform content filtering in Camel? Show me an example.
 
+```
+
+or alternatively, if you prefer a graphical interface: 
+
+```
+streamlit run ui.py
 ```
 
 [...]
