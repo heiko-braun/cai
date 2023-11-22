@@ -12,3 +12,4 @@ python-statemachine
 argparse
 cohere
 streamlit
+pypdf
