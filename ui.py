@@ -26,13 +26,13 @@ st.set_page_config(page_title="Camel Docs Assistants API", page_icon=":speech_ba
 # if st.sidebar.button("Clear Screen"):    
 #     st.empty()
 
-st.markdown('''
-<style>
-.stApp [data-testid="stToolbar"]{
-    display:none;
-}
-</style>
-''', unsafe_allow_html=True)
+# st.markdown('''
+# <style>
+# .stApp [data-testid="stToolbar"]{
+#     display:none;
+# }
+# </style>
+# ''', unsafe_allow_html=True)
 
 # Main chat interface setup
 st.title("Camel Docs Assistant")
