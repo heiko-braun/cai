@@ -105,46 +105,52 @@ def fetch_docs(entities):
     else:
         return "No matching file found for "+entities  
 
-def fetch_pdf_pages(entities, collection_name):  
+def fetch_pdf_pages(entities):  
     print("Fetching PDF pages for query: ", entities)  
     
-    query_results = query_qdrant(entities, collection_name=collection_name)
-    num_matches = len(query_results)
-    
-    # print("First glance matches:")
-    # for i, article in enumerate(query_results):    
-    #    print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
+    response_documents = []
 
-    if num_matches > 0:
+    for collection_name in ["fuse_camel_development", "fuse_component_reference"]:
+            
+        query_results = query_qdrant(entities, collection_name=collection_name)
+        num_matches = len(query_results)
+        
+        # print("First glance matches:")
+        # for i, article in enumerate(query_results):    
+        #    print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
 
-        page_hits = []        
-        for _, article in enumerate(query_results):
-            page_number = article.payload["page_number"]
-            with open(TEXT_DIR+collection_name+"/page_"+str(page_number)+".txt") as f:                
-                page_hits.append(f.read())            
+        if num_matches > 0:
 
-        # apply reranking
-        co = cohere.Client(os.environ['COHERE_KEY'])
-        rerank_hits = co.rerank(
-            model = 'rerank-english-v2.0',
-            query = entities,
-            documents = page_hits,
-            top_n = 3
-        )
+            page_hits = []        
+            for _, article in enumerate(query_results):
+                page_number = article.payload["page_number"]
+                with open(TEXT_DIR+collection_name+"/page_"+str(page_number)+".txt") as f:                
+                    page_hits.append(f.read())            
 
-        print("Reranked matches: ")   
-        for hit in rerank_hits:
-            orig_result = query_results[hit.index]
-            print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')
-            #print(orig_result.payload["filename"])
+            # apply reranking
+            co = cohere.Client(os.environ['COHERE_KEY'])
+            rerank_hits = co.rerank(
+                model = 'rerank-english-v2.0',
+                query = entities,
+                documents = page_hits,
+                top_n = 3
+            )
 
-        # return the reanked hits as a single results
-        return ' '.join(page_hits)
-    
-    else:
-        return "No matching file found for "+entities            
+            print("Reranked matches (", collection_name, "):")   
+            for hit in rerank_hits:
+                orig_result = query_results[hit.index]
+                print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')
+                #print(orig_result.payload["filename"])
+
+            # return the reanked hits as a single results
+            response_documents.append(' '.join(page_hits))
+        
+        else:
+            print("No matching file found for "+entities)
+
+    return ' '.join(response_documents)
                 
-def query_qdrant(query, top_k=5, collection_name="camel_docs"):
+def query_qdrant(query, top_k=5, collection_name="fuse_camel_development"):
     openai_client = create_openai_client()
     qdrant_client = create_qdrant_client()
 
@@ -263,10 +269,7 @@ class Assistant(StateMachine):
 
             # TODO: Needs a strategy implementation
             #doc = fetch_docs(self.prompt_text + " | " + keywords)                  
-            doc = fetch_pdf_pages(
-                entities=self.prompt_text + " | " + keywords, 
-                collection_name="fuse_camel_development"
-                )
+            doc = fetch_pdf_pages(entities=keywords)
             outputs.append(
                 {
                     "tool_call_id": a["call_id"],
