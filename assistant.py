@@ -121,29 +121,40 @@ def fetch_pdf_pages(entities):
 
         if num_matches > 0:
 
-            page_hits = []        
+            first_iteration_hits = []        
             for _, article in enumerate(query_results):
                 page_number = article.payload["page_number"]
                 with open(TEXT_DIR+collection_name+"/page_"+str(page_number)+".txt") as f:                
-                    page_hits.append(f.read())            
+                    first_iteration_hits.append(f.read())            
 
             # apply reranking
             co = cohere.Client(os.environ['COHERE_KEY'])
             rerank_hits = co.rerank(
                 model = 'rerank-english-v2.0',
                 query = entities,
-                documents = page_hits,
+                documents = first_iteration_hits,
                 top_n = 3
             )
 
+            print("--")
+            for i,x in enumerate(first_iteration_hits):
+                print(i, ": ", x[:50].replace('\n', ' '))
+
+            second_iteration_hits = []
             print("Reranked matches (", collection_name, "):")   
-            for hit in rerank_hits:
+            for i, hit in enumerate(rerank_hits):                
                 orig_result = query_results[hit.index]
-                print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')
-                #print(orig_result.payload["filename"])
+                second_iteration_hits.append(
+                    first_iteration_hits[hit.index]
+                )
+                print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
+
+            print("--")
+            for i,x in enumerate(second_iteration_hits):
+                print(i, ": ", x[:50].replace('\n', ' '))
 
             # return the reanked hits as a single results
-            response_documents.append(' '.join(page_hits))
+            response_documents.append(' '.join(second_iteration_hits))
         
         else:
             print("No matching file found for "+entities)
