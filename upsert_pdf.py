@@ -21,10 +21,12 @@ from tenacity import (
 import sys
 import re
 
+import argparse
+
 # ---
 
 # create an embedding using openai
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1))
 def get_embedding(openai_client, text, model="text-embedding-ada-002"):
    start = time.time()
    text = text.replace("\n", " ")
@@ -54,7 +56,7 @@ PROMPT_TEMPLATE = PromptTemplate.from_template(
     )
 
 # extract keywords using the chat API with custom prompt
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1))
 def extract_keywords(openai_client, document):
     start = time.time()
     message = PROMPT_TEMPLATE.format(text=document)
@@ -85,31 +87,60 @@ def create_qdrant_client():
         
 # --- 
 
-QDRANT_COLLECTION_NAME = "fuse_camel_development"
+QDRANT_COLLECTION_NAME = "fuse_component_reference"
 
-# Dataset to be upserted
-docfiles = []
+# data
+def pagenum(name):
+    return int(re.search("[0-9]+", name)[0])
+
+filenames = []
 for _file in glob.glob(TEXT_DIR+QDRANT_COLLECTION_NAME+"/*.txt"):
-    docfiles.append({
-        "page": re.search("[0-9]", _file)[0],
-        "content": docfiles
-    })
+    filenames.append(_file)
 
-print(docfiles[0])
+filenames.sort(key=pagenum)
+
+# arguments
+parser = argparse.ArgumentParser(description='Upsert PDF pages')
+parser.add_argument('-s', '--start', help='Start page number', required=False, default=0)
+parser.add_argument('-b', '--batchsize', help='Batch size (How many pages)', required=False, default=len(filenames))
+parser.add_argument('-p', '--processes', help='Number of parallel processes', required=False, default=2)
+args = parser.parse_args()
+
+# preparations for ingestion
+docfiles = []
+start = int(args.start)
+end = int(args.start)+int(args.batchsize)
+
+# guardrails
+if end >= len(filenames):
+    end = len(filenames)-1
+
+for name in filenames[start:end]:
+    
+    file_content = None
+    with open(name) as f:                
+        file_content = f.read()
+
+    page_number = re.search("[0-9]+", name)[0]
+    
+    docfiles.append({
+        "page": str(page_number),
+        "content": file_content
+    })
 
 print("Upserting N pages: ", len(docfiles))
 
-
-sys.exit()
-
 # start with a fresh DB everytime this file is run
-create_qdrant_client().recreate_collection(
-    collection_name=QDRANT_COLLECTION_NAME,
-    vectors_config=models.VectorParams(
-        size=1536,  # Vector size is defined by OpenAI model
-        distance=models.Distance.COSINE,
-    ),
-)
+if(start==0):
+    create_qdrant_client().recreate_collection(
+        collection_name=QDRANT_COLLECTION_NAME,
+        vectors_config=models.VectorParams(
+            size=1536,  # Vector size is defined by OpenAI model
+            distance=models.Distance.COSINE,
+        ),
+    )
+else:
+    print("Upsert into exisitng collection ", QDRANT_COLLECTION_NAME)
 
 def do_job(tasks_to_accomplish):
     while True:
@@ -128,28 +159,37 @@ def do_job(tasks_to_accomplish):
                 if no exception has been raised, add the task completion 
                 message to task_that_are_done queue
             '''
-            try:
-                
-                page_number = task["page_number"]
-                page_content = task["page_content"]
-                
-                print("Start page ", page_number)
 
+            page_number = str(task["page_number"])
+            page_content = task["page_content"]
+            
+            print("Start page '"+ page_number+ "'")
+            
+            try:
+                                
                 openai_client = create_openai_client()    
-                qdrant_client = create_qdrant_client()
 
                 # extract keywords                
                 entities = extract_keywords(openai_client, page_content)
-                
-                # Create embeddings            
-                embeddings = get_embedding(openai_client=openai_client, text=entities)
-                
+
+                # create embeddings          
+                embeddings = get_embedding(openai_client, text=entities)
+
+            except Exception as e:
+                print("Failed to call openai (skipping ... ): ", page_number)                
+                print(e)
+                continue            
+
+            try:    
+
+                qdrant_client = create_qdrant_client()
+
                 # Upsert        
                 upsert_resp = qdrant_client.upsert(
-                    collection_name=qdrant_collection_name,
+                    collection_name=QDRANT_COLLECTION_NAME,
                     points=[
                         models.PointStruct(
-                            id=page_number,
+                            id=int(page_number),
                             vector=embeddings,
                             payload={
                                 "page_number": page_number,
@@ -159,19 +199,21 @@ def do_job(tasks_to_accomplish):
                     ]        
                 )
                
-                print("Page ", page_number, " completed \n")
+                
                 
             except Exception as e:
-                print("Failed to process page (skipping ... ): ", page_number)
-                traceback.print_exc()
+                print("Failed to upsert page (skipping ... ): ", page_number)
+                print(e)
                 continue            
+
+            print("Page ", page_number, " completed \n")
             
     return True
 
 
 def main():
     
-    number_of_processes = 1
+    number_of_processes = int(args.processes)
     tasks_to_accomplish = Queue()
     
     processes = []
@@ -179,7 +221,7 @@ def main():
     for doc in docfiles:
         tasks_to_accomplish.put(
             {
-                "page_number": doc["page"],
+                "page_number": int(doc["page"]),
                 "page_content": doc["content"]
             }
         )
