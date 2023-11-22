@@ -135,11 +135,7 @@ def fetch_pdf_pages(entities):
                 documents = first_iteration_hits,
                 top_n = 3
             )
-
-            print("--")
-            for i,x in enumerate(first_iteration_hits):
-                print(i, ": ", x[:50].replace('\n', ' '))
-
+         
             second_iteration_hits = []
             print("Reranked matches (", collection_name, "):")   
             for i, hit in enumerate(rerank_hits):                
@@ -148,11 +144,7 @@ def fetch_pdf_pages(entities):
                     first_iteration_hits[hit.index]
                 )
                 print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
-
-            print("--")
-            for i,x in enumerate(second_iteration_hits):
-                print(i, ": ", x[:50].replace('\n', ' '))
-
+          
             # return the reanked hits as a single results
             response_documents.append(' '.join(second_iteration_hits))
         
