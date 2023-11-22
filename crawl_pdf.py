@@ -1,9 +1,9 @@
 from langchain.document_loaders import PyPDFLoader
 from conf.constants import *
 
-loader = PyPDFLoader("./docs/red_hat_fuse-7.12-apache_camel_development_guide-en-us.pdf")
+loader = PyPDFLoader("./docs/red_hat_fuse-7.12-apache_camel_component_reference-en-us.pdf")
 pages = loader.load_and_split()
-COLLECTION_NAME="fuse_camel_development"
+COLLECTION_NAME="fuse_component_reference"
 
 offset = 31
 for page in pages[offset:]:
