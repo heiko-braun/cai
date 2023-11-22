@@ -93,9 +93,11 @@ def create_qdrant_client():
         
 # --- 
 
+QDRANT_COLLECTION_NAME="camel_docs"
+
 # start with a fresh DB everytime this file is run
 create_qdrant_client().recreate_collection(
-    collection_name="camel_docs",
+    collection_name=QDRANT_COLLECTION_NAME,
     vectors_config=models.VectorParams(
         size=1536,  # Vector size is defined by OpenAI model
         distance=models.Distance.COSINE,
@@ -144,7 +146,7 @@ def do_job(tasks_to_accomplish):
                 
                 # Upsert        
                 upsert_resp = qdrant_client.upsert(
-                    collection_name="camel_docs",
+                    collection_name=QDRANT_COLLECTION_NAME,
                     points=[
                         models.PointStruct(
                             id=task["idx"],
