@@ -1,4 +1,5 @@
 .DS_Store
+_data_backup
 data/text
 data/processed
 setup.sh
