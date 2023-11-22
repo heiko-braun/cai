@@ -13,13 +13,12 @@ pip install -r requirements.txt
 
 #### API Keys
 
-The all the tools and the assistant leverage 3rd party services for which you need API keys.
+All the tools and the assistant leverage 3rd party services for which you need API keys.
 
 Make sure these are present in your environment:
 
 ```
 export OPENAI_API_KEY="..."
-export ASSISTANT_ID="..."
 export QDRANT_KEY="..."
 export QDRANT_URL="..."
 export COHERE_KEY="..."
