@@ -270,6 +270,10 @@ class Assistant(StateMachine):
             # it often includes camel itself. remove it
             keywords = keywords.replace('Apache', '').replace('Camel', '')
 
+            # we may end up with no keywrods at all
+            if(keywords==""):
+                continue
+
             # TODO: Needs a strategy implementation
             #doc = fetch_docs(self.prompt_text + " | " + keywords)                  
             doc = fetch_pdf_pages(entities=keywords)
