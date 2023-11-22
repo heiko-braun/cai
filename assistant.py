@@ -219,7 +219,11 @@ class Assistant(StateMachine):
         
         for a in args:
             entity_args = a["call_arguments"]["entities"]
-            doc = fetch_docs(' '.join(entity_args))      
+            keywords = ' '.join(entity_args)
+            # it often includes camel itself. remove it
+            keywords = keywords.replace('Apache', '').replace('Camel', '')
+
+            doc = fetch_docs(self.prompt_text + " | " + keywords)                  
             outputs.append(
                 {
                     "tool_call_id": a["call_id"],
