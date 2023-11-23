@@ -271,7 +271,13 @@ class Assistant(StateMachine):
             keywords = keywords.replace('Apache', '').replace('Camel', '')
 
             # we may end up with no keywrods at all
-            if(keywords==""):
+            if(len(keywords)==0 or keywords.isspace()):
+                outputs.append(
+                    {
+                        "tool_call_id": a["call_id"],
+                        "output": "'No additional information found.'"
+                    }
+                )
                 continue
 
             # TODO: Needs a strategy implementation
@@ -313,6 +319,8 @@ class Assistant(StateMachine):
         else:
             print("Illegal state: ", self.run.status)            
             print(self.run.last_error)
+            if (self.st_callback is not None):
+                self.st_callback.error(self.run.last_error)
             
     # the assistant has resolved the question
     def on_enter_answered(self):
