@@ -6,3 +6,5 @@ setup.sh
 conf/__pycache__
 util/__pycache__
 __pycache__/
+docker_run.sh
+docker_build.sh
