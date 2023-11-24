@@ -51,7 +51,7 @@ if "messages" not in st.session_state:
 
 if prompt := st.chat_input("How can I help you?"):
     # Add user message to the state and display it
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt.encode('iso-8859-1')})
     with st.chat_message("user"):
         st.markdown(prompt)
 
