@@ -107,7 +107,7 @@ def fetch_docs(entities):
         return "No matching file found for "+entities  
 
 def fetch_pdf_pages(entities, feedback):  
-    feedback.display("Fetching PDF pages for query: " + entities)  
+    feedback.print("Fetching PDF pages for query: " + entities)  
     
     response_documents = []
 
@@ -138,13 +138,13 @@ def fetch_pdf_pages(entities, feedback):
             )
          
             second_iteration_hits = []
-            feedback.display("Reranked matches ("+ collection_name+ "):")   
+            feedback.print("Reranked matches ("+ collection_name+ "):")   
             for i, hit in enumerate(rerank_hits):                
                 orig_result = query_results[hit.index]
                 second_iteration_hits.append(
                     first_iteration_hits[hit.index]
                 )
-                feedback.display(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
+                feedback.print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
           
             # return the reanked hits as a single results
             response_documents.append(' '.join(second_iteration_hits))
@@ -193,19 +193,55 @@ def create_qdrant_client():
             
 # ---
 
-class FeedbackStrategy(ABC):
+class StatusStrategy(ABC):
     @abstractmethod
-    def display(self, message) -> str:
+    def print(self, message) -> str:
         pass
 
-class LoggingFeedback(FeedbackStrategy):
-    def display(self, message):
+    @abstractmethod    
+    def set_visible(self, is_visible):
+        pass
+
+    @abstractmethod    
+    def set_tagline(self, tagline):
+        pass
+        
+class LoggingStatus(StatusStrategy):
+    def print(self, message):
         print(message)
+
+    def set_visible(self, is_visible):
+        pass  
+
+    def set_tagline(self, tagline):
+        pass  
+
+class StreamlitStatus(StatusStrategy):
+    
+    def __init__(self, st_callback):
+        self.st_callback = st_callback
+        self.st_status = None
+    
+    def print(self, message):
+        if(self.st_status is not None):
+           self.st_status.write(message) 
+
+    def set_visible(self, is_visible):
+        if (is_visible):
+            self.st_status = self.st_callback.status("Thinking ...") 
+        else:            
+            self.st_status.update(label="Completed!", state="complete", expanded=False)
+
+    def set_tagline(self, tagline):
+        if(self.st_status is not None):
+           self.st_status.update(label=tagline) 
 
 class Assistant(StateMachine):
     "Assistant state machine"
     
-    feedback = LoggingFeedback()
+    feedback = LoggingStatus()
+    status = None
+
     prompt = State(initial=True)
     running = State()
     lookup = State()
@@ -220,6 +256,9 @@ class Assistant(StateMachine):
         
         # streamlit callback, if present
         self.st_callback = st_callback
+
+        if(self.st_callback is not None):
+            self.feedback = StreamlitStatus(self.st_callback)
 
         # internal states
         self.prompt_text = None
@@ -237,19 +276,29 @@ class Assistant(StateMachine):
             with st.chat_message("assistant"):
                 st.markdown(message, unsafe_allow_html=True)  
 
+    def display_status(self, message): 
+        if(self.status is None):
+            print(message)
+        else:
+            self.status.write('Lookup additional information ...')        
+    
     def on_exit_prompt(self, text):
         self.lookups_total = 0
-        self.prompt_text = text        
+        self.prompt_text = text          
 
+        # clear screen
         if(self.st_callback is not None):
             self.st_callback.empty()
-                    
+
+        # display status widget
+        self.feedback.set_visible(True)
+            
         # start a new thread and delete old ones if exist
         if(self.thread is not None):
             self.openai_client.beta.threads.delete(self.thread.id)
         
         self.thread = self.openai_client.beta.threads.create()
-        self.feedback.display("New Thread: " + str(self.thread.id)) 
+        self.feedback.print("New Thread: " + str(self.thread.id)) 
 
         # Add initial message
         message = self.openai_client.beta.threads.messages.create(
@@ -262,16 +311,12 @@ class Assistant(StateMachine):
         self.run = self.openai_client.beta.threads.runs.create(
             thread_id=self.thread.id,
             assistant_id=ASSISTANT_ID,
-        )
+        )        
 
     def on_enter_lookup(self):
-        if(self.st_callback is None):
-            self._on_enter_lookup()
-        else:
-            with self.st_callback.spinner('Lookup additional information ...'):    
-                self._on_enter_lookup()
-
-    def _on_enter_lookup(self):
+        
+        self.feedback.set_tagline("Working ...")
+        self.feedback.print("Lookup additional information ...")
         
         self.lookups_total = self.lookups_total +1
 
@@ -282,7 +327,7 @@ class Assistant(StateMachine):
         for a in args:
             entity_args = a["call_arguments"]["entities"]
             keywords = ' '.join(entity_args)
-            self.feedback.display("Lookup arguments: " + keywords)
+            self.feedback.print("Keywords: " + keywords)
 
             # it often includes camel itself. remove it
             keywords = keywords.replace('Apache', '').replace('Camel', '')
@@ -315,17 +360,13 @@ class Assistant(StateMachine):
             )    
         
         self.docs_supplied()
+        self.feedback.print("Processing new information ...")
 
-    # starting a thinking loop
+    # starting a thinking loop    
     def on_enter_running(self):
-        
-        if(self.st_callback is None):
-            self._on_enter_running()
-        else:                    
-            with self.st_callback.spinner('Thinking ...'):    
-                self._on_enter_running()
 
-    def _on_enter_running(self):
+        self.feedback.set_tagline("Thinking ...")    
+
         self.run = wait_on_run(self.openai_client, self.run, self.thread)        
 
         if(self.run.status == "requires_action"):            
@@ -333,7 +374,7 @@ class Assistant(StateMachine):
         elif(self.run.status == "completed"):    
             self.resolved()
         else:
-            self.feedback.display("Illegal state: " + self.run.status)            
+            self.feedback.print("Illegal state: " + self.run.status)            
             print(self.run.last_error)
             if (self.st_callback is not None):
                 self.st_callback.error(self.run.last_error)
@@ -351,7 +392,8 @@ class Assistant(StateMachine):
 
         # delete the thread
         self.openai_client.beta.threads.delete(self.thread.id)        
-        self.feedback.display("Deleted Thread: " + str(self.thread.id))
+        self.feedback.print("Deleted Thread: " + str(self.thread.id))
+        self.feedback.set_visible(False)
         self.thread = None
 
 # --
