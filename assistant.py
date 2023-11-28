@@ -23,6 +23,7 @@ import argparse
 import cohere
 
 import streamlit as st
+from abc import ABC, abstractmethod
 
 # ---
 
@@ -52,11 +53,11 @@ def get_call_arguments(run):
         "required_action.submit_tool_outputs.tool_calls", 
         as_json(run)
     )
-    print(json.dumps(tool_calls, indent=2))
+    
     call_arguments = []
     for call in tool_calls:
         id = jmespath.search("id", call)    
-        arguments = jmespath.search("function.arguments", call)    
+        arguments = jmespath.search("function.arguments", call)        
         call_arguments.append(
             {
                 "call_id": id,
@@ -105,8 +106,8 @@ def fetch_docs(entities):
     else:
         return "No matching file found for "+entities  
 
-def fetch_pdf_pages(entities):  
-    print("Fetching PDF pages for query: ", entities)  
+def fetch_pdf_pages(entities, feedback):  
+    feedback.display("Fetching PDF pages for query: " + entities)  
     
     response_documents = []
 
@@ -137,13 +138,13 @@ def fetch_pdf_pages(entities):
             )
          
             second_iteration_hits = []
-            print("Reranked matches (", collection_name, "):")   
+            feedback.display("Reranked matches ("+ collection_name+ "):")   
             for i, hit in enumerate(rerank_hits):                
                 orig_result = query_results[hit.index]
                 second_iteration_hits.append(
                     first_iteration_hits[hit.index]
                 )
-                print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
+                feedback.display(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
           
             # return the reanked hits as a single results
             response_documents.append(' '.join(second_iteration_hits))
@@ -191,10 +192,20 @@ def create_qdrant_client():
     return client
             
 # ---
-         
+
+class FeedbackStrategy(ABC):
+    @abstractmethod
+    def display(self, message) -> str:
+        pass
+
+class LoggingFeedback(FeedbackStrategy):
+    def display(self, message):
+        print(message)
+
 class Assistant(StateMachine):
     "Assistant state machine"
-
+    
+    feedback = LoggingFeedback()
     prompt = State(initial=True)
     running = State()
     lookup = State()
@@ -224,17 +235,21 @@ class Assistant(StateMachine):
         if self.st_callback is not None:
             st.session_state.messages.append({"role": "assistant", "content": message})
             with st.chat_message("assistant"):
-                st.markdown(message, unsafe_allow_html=True)      
-        
+                st.markdown(message, unsafe_allow_html=True)  
+
     def on_exit_prompt(self, text):
+        self.lookups_total = 0
         self.prompt_text = text        
 
         if(self.st_callback is not None):
             self.st_callback.empty()
                     
-        # start a new thread
+        # start a new thread and delete old ones if exist
+        if(self.thread is not None):
+            self.openai_client.beta.threads.delete(self.thread.id)
+        
         self.thread = self.openai_client.beta.threads.create()
-        print("New Thread: ", self.thread.id)
+        self.feedback.display("New Thread: " + str(self.thread.id)) 
 
         # Add initial message
         message = self.openai_client.beta.threads.messages.create(
@@ -257,7 +272,7 @@ class Assistant(StateMachine):
                 self._on_enter_lookup()
 
     def _on_enter_lookup(self):
-        print("Lookup requested")
+        
         self.lookups_total = self.lookups_total +1
 
         # take call arguments and invoke lookup
@@ -267,6 +282,8 @@ class Assistant(StateMachine):
         for a in args:
             entity_args = a["call_arguments"]["entities"]
             keywords = ' '.join(entity_args)
+            self.feedback.display("Lookup arguments: " + keywords)
+
             # it often includes camel itself. remove it
             keywords = keywords.replace('Apache', '').replace('Camel', '')
 
@@ -282,7 +299,7 @@ class Assistant(StateMachine):
 
             # TODO: Needs a strategy implementation
             #doc = fetch_docs(self.prompt_text + " | " + keywords)                  
-            doc = fetch_pdf_pages(entities=keywords)
+            doc = fetch_pdf_pages(entities=keywords, feedback=self.feedback)
             outputs.append(
                 {
                     "tool_call_id": a["call_id"],
@@ -301,8 +318,7 @@ class Assistant(StateMachine):
 
     # starting a thinking loop
     def on_enter_running(self):
-        print("Enter running ...")   
-
+        
         if(self.st_callback is None):
             self._on_enter_running()
         else:                    
@@ -317,7 +333,7 @@ class Assistant(StateMachine):
         elif(self.run.status == "completed"):    
             self.resolved()
         else:
-            print("Illegal state: ", self.run.status)            
+            self.feedback.display("Illegal state: " + self.run.status)            
             print(self.run.last_error)
             if (self.st_callback is not None):
                 self.st_callback.error(self.run.last_error)
@@ -329,19 +345,20 @@ class Assistant(StateMachine):
         assistant_response = get_response(self.openai_client, self.thread)
         for m in assistant_response:
             if(m.role == "assistant"):
-                self.display_message(m.content[0].text.value)
+                self.display_message(m.content[0].text.value)    
 
         pretty_print(assistant_response)
 
         # delete the thread
-        self.openai_client.beta.threads.delete(self.thread.id)
-        print("Deleted Thread: ", self.thread.id)
+        self.openai_client.beta.threads.delete(self.thread.id)        
+        self.feedback.display("Deleted Thread: " + str(self.thread.id))
+        self.thread = None
 
 # --
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Camel Docs Assistant')
-    parser.add_argument('-f', '--filename', help='The inut file that will be taken as a prompt', required=False)
+    parser = argparse.ArgumentParser(description='Camel Support Assistant')
+    parser.add_argument('-f', '--filename', help='The input file that will be taken as a prompt', required=False)
     args = parser.parse_args()
 
     if(args.filename == None):
