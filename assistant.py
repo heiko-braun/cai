@@ -107,7 +107,7 @@ def fetch_docs(entities):
         return "No matching file found for "+entities  
 
 def fetch_pdf_pages(entities, feedback):  
-    feedback.print("Fetching PDF pages for query: " + entities)  
+    #feedback.print("Fetching PDF pages for query: " + entities)  
     
     response_documents = []
 
@@ -326,9 +326,9 @@ class Assistant(StateMachine):
         
         for a in args:
             entity_args = a["call_arguments"]["entities"]
+            self.feedback.print("Keywords: " + ' | '.join(entity_args)       )
+ 
             keywords = ' '.join(entity_args)
-            self.feedback.print("Keywords: " + keywords)
-
             # it often includes camel itself. remove it
             keywords = keywords.replace('Apache', '').replace('Camel', '')
 
