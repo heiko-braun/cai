@@ -35,7 +35,7 @@ st.set_page_config(page_title="Camel Docs Assistants API", page_icon=":speech_ba
 # ''', unsafe_allow_html=True)
 
 # Main chat interface setup
-st.title("Camel Docs Assistant")
+st.title("Camel Support Assistant")
 assistant = Assistant(st)
 
 # Only show the chat interface if the chat has been started
