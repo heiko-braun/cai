@@ -1,0 +1,5 @@
+A customer has a use case where they want the Camel's route to continue consuming from Kinesis at the last consumed message after restarting the POD. To achieve this, Kinesis has a "checkpoint" feature. Unfortunately, Camel Kinesis component lacks the checkpoint support.
+
+However, it supports Resume API (I had to glean this information from GitHub because there is hardly any documentation, testing or examples available neither upstream).
+
+Then I would suggest implementing a ResumeAdapter that supports `checkpoint` starting from `KinesisDefaultResumeAdapter`. But I don't know where to start from.  Any Advice?
