@@ -7,6 +7,7 @@ import httpx
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
+from langchain.prompts import PromptTemplate
 
 from conf.constants import *
 
@@ -49,6 +50,7 @@ def wait_on_run(client, run, thread):
 
 # fetch the call arguments from an assistant callback
 def get_call_arguments(run):    
+    show_json(run)
     tool_calls = jmespath.search(
         "required_action.submit_tool_outputs.tool_calls", 
         as_json(run)
@@ -191,6 +193,33 @@ def create_qdrant_client():
     )
     return client
             
+
+# rewrite a question using the chat API
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1))
+def rewrite_question(openai_client, text):
+        
+    template = PromptTemplate.from_template(
+        """
+        Look at the following text and respond with two things: 
+        
+        A) a rewritten version of the original text 
+        B) a summary of the question in the original text
+        
+        Text: \"\"\"{text}\"\"\"
+
+        """
+    )
+
+    message = "Please rewrite the following text: "    
+    response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            messages=[
+                {"role": "system", "content": "You are a service used to rewrite text"},
+                {"role": "user", "content": template.format(text=text)}
+            ]
+        )
+    
+    return response.choices[0].message.content            
 # ---
 
 class StatusStrategy(ABC):
@@ -301,10 +330,12 @@ class Assistant(StateMachine):
         self.feedback.print("New Thread: " + str(self.thread.id)) 
 
         # Add initial message
+        improved_question = rewrite_question(openai_client = self.openai_client, text=text)
+        print("Improved question: \n", improved_question)
         message = self.openai_client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
-            content=text,
+            content=improved_question,
         )
 
         # create a run
