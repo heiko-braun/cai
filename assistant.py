@@ -50,7 +50,7 @@ def wait_on_run(client, run, thread):
 
 # fetch the call arguments from an assistant callback
 def get_call_arguments(run):    
-    show_json(run)
+    #show_json(run)
     tool_calls = jmespath.search(
         "required_action.submit_tool_outputs.tool_calls", 
         as_json(run)
