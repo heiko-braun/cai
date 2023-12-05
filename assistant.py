@@ -45,6 +45,7 @@ def wait_on_run(client, run, thread):
             run_id=run.id,
         )
         print("Thinking ... ", run.status)
+        #show_json(run)
         time.sleep(0.5)        
     return run    
 
@@ -200,17 +201,13 @@ def rewrite_question(openai_client, text):
         
     template = PromptTemplate.from_template(
         """
-        Look at the following text and respond with two things: 
-        
-        A) a rewritten version of the original text 
-        B) a summary of the question in the original text
+        Rephrase the following text:
         
         Text: \"\"\"{text}\"\"\"
 
         """
     )
-
-    message = "Please rewrite the following text: "    
+       
     response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo-1106",
             messages=[
