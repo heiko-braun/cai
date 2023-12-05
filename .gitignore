@@ -8,3 +8,6 @@ util/__pycache__
 __pycache__/
 docker_run.sh
 docker_build.sh
+run_examples.sh
+upload_examples.sh
+answers
