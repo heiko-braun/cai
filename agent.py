@@ -46,9 +46,9 @@ def configure_retriever(collection_name):
         embeddings=OpenAIEmbeddings())
     
     # top k and threshold settings see https://python.langchain.com/docs/modules/data_connection/retrievers/vectorstore
-    return qdrant.as_retriever(
-        search_type="similarity_score_threshold", 
-        search_kwargs={"score_threshold": .5}
+    return qdrant.as_retriever(        
+        search_type="mmr",
+        search_kwargs={"k": 5}
         ) 
 
 comp_ref_tool = create_retriever_tool(
