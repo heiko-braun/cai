@@ -21,4 +21,4 @@ EXPOSE 80
 
 HEALTHCHECK CMD curl --fail http://localhost:80/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "ui.py", "--server.port=80"]
+ENTRYPOINT ["streamlit", "run", "agent.py", "--server.port=80"]
