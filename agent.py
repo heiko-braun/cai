@@ -46,7 +46,10 @@ def configure_retriever(collection_name):
         embeddings=OpenAIEmbeddings())
     
     # top k and threshold settings see https://python.langchain.com/docs/modules/data_connection/retrievers/vectorstore
-    return qdrant.as_retriever() 
+    return qdrant.as_retriever(
+        search_type="similarity_score_threshold", 
+        search_kwargs={"score_threshold": .5}
+        ) 
 
 comp_ref_tool = create_retriever_tool(
     configure_retriever("agent_fuse_comp_ref"),
@@ -99,7 +102,8 @@ if prompt := st.chat_input(placeholder=starter_message):
     with st.chat_message("assistant"):
         st_callback = StreamlitCallbackHandler(
             parent_container=st.container(),
-            collapse_completed_thoughts=False
+            collapse_completed_thoughts=True,
+            expand_new_thoughts=False
             )
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
