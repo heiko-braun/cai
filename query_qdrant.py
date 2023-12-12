@@ -39,10 +39,11 @@ query_results = query_qdrant(
     openai_client=openai_client, 
     qdrant_client=qdrant_client, 
     query=input("Prompt:"), 
-    collection_name='camel_docs'
+    collection_name='agent_fuse_comp_ref'
     )
 
 print("Found N matches: ", len(query_results))
 for i, article in enumerate(query_results):    
-    print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
+    #print(article)
+    print(f'{i + 1}. {article.payload["metadata"]["page_number"]} (Score: {round(article.score, 3)})')
 

@@ -87,24 +87,23 @@ def create_qdrant_client():
         
 # --- 
 
-QDRANT_COLLECTION_NAME = "fuse_component_reference"
-
 # data
 def pagenum(name):
     return int(re.search("[0-9]+", name)[0])
 
+# arguments
+parser = argparse.ArgumentParser(description='Upsert PDF pages')
+parser.add_argument('-c', '--collection', help='The target collection name', required=True)
+parser.add_argument('-s', '--start', help='Start page number', required=False, default=0)
+parser.add_argument('-b', '--batchsize', help='Batch size (How many pages)', required=False, default=10)
+parser.add_argument('-p', '--processes', help='Number of parallel processes', required=False, default=2)
+args = parser.parse_args()
+
 filenames = []
-for _file in glob.glob(TEXT_DIR+QDRANT_COLLECTION_NAME+"/*.txt"):
+for _file in glob.glob(TEXT_DIR+args.collection+"/*.txt"):
     filenames.append(_file)
 
 filenames.sort(key=pagenum)
-
-# arguments
-parser = argparse.ArgumentParser(description='Upsert PDF pages')
-parser.add_argument('-s', '--start', help='Start page number', required=False, default=0)
-parser.add_argument('-b', '--batchsize', help='Batch size (How many pages)', required=False, default=len(filenames))
-parser.add_argument('-p', '--processes', help='Number of parallel processes', required=False, default=2)
-args = parser.parse_args()
 
 # preparations for ingestion
 docfiles = []
@@ -130,17 +129,18 @@ for name in filenames[start:end]:
 
 print("Upserting N pages: ", len(docfiles))
 
-# start with a fresh DB everytime this file is run
+# start with a fresh DB everytime this file is run from a zero index
 if(start==0):
+    print("Recreate collection ", args.collection)
     create_qdrant_client().recreate_collection(
-        collection_name=QDRANT_COLLECTION_NAME,
+        collection_name=args.collection,
         vectors_config=models.VectorParams(
             size=1536,  # Vector size is defined by OpenAI model
             distance=models.Distance.COSINE,
         ),
     )
 else:
-    print("Upsert into exisitng collection ", QDRANT_COLLECTION_NAME)
+    print("Upsert into exisitng collection ", args.collection)
 
 def do_job(tasks_to_accomplish):
     while True:
@@ -184,16 +184,27 @@ def do_job(tasks_to_accomplish):
 
                 qdrant_client = create_qdrant_client()
 
+                # Expected schema to be compatible with langchain retriever
+                # {
+                #     "page_content": "Lorem ipsum dolor sit amet",
+                #     "metadata": {
+                #         "foo": "bar"
+                #     }
+                # }
+
                 # Upsert        
                 upsert_resp = qdrant_client.upsert(
-                    collection_name=QDRANT_COLLECTION_NAME,
+                    collection_name=args.collection,
                     points=[
                         models.PointStruct(
                             id=int(page_number),
                             vector=embeddings,
                             payload={
-                                "page_number": page_number,
-                                "entities": entities            
+                                "page_content": "\""+page_content+"\"",
+                                "metadata": {
+                                    "page_number": page_number,
+                                    "entities": entities            
+                                }
                             }
                         )
                     ]        
