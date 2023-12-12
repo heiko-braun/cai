@@ -57,13 +57,20 @@ comp_ref_tool = create_retriever_tool(
     "Searches and returns documents regarding Camel Components and their configuration options. Camel Components are used within the Camel framework to integrate third-party systems",
 )
 
-tools = [comp_ref_tool]
+camel_dev_tool = create_retriever_tool(
+    configure_retriever("agent_fuse_camel_dev"),
+    "search_camel_developer_guide",
+    "Searches and returns documents regarding core concepts and API's used to develop Camel applications. The developer guide also explains how to leverage the enterprise integration patterns in Camel.",
+)
+
+
+tools = [comp_ref_tool, camel_dev_tool]
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
 message = SystemMessage(
     content=(
         "You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework."
         "Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. "
-        "If there is any ambiguity, you probably assume they are about that."
+        "You always request additional information using the functions provided before answering the original question."
         "If possible, provide examples that include Java code within the response."
     )
 )
@@ -79,7 +86,7 @@ agent_executor = AgentExecutor(
     return_intermediate_steps=True,
 )
 memory = AgentTokenBufferMemory(llm=llm)
-starter_message = "Ask me anything about Camel!"
+starter_message = "How can I help you?"
 if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
     st.session_state["messages"] = [AIMessage(content=starter_message)]
 
