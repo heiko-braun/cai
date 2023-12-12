@@ -22,7 +22,7 @@ from conf.constants import *
 client = Client()
 
 st.set_page_config(
-    page_title="ChatLangChain",
+    page_title="Camel Quickstart Assitant",
     page_icon="🦜",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -82,7 +82,8 @@ if "messages" not in st.session_state or st.sidebar.button("Clear message histor
 
 
 def send_feedback(run_id, score):
-    client.create_feedback(run_id, "user_score", score=score)
+    print(str(run_id), str(score))
+    #client.create_feedback(run_id, "user_score", score=score)
 
 
 for msg in st.session_state.messages:
@@ -96,7 +97,10 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input(placeholder=starter_message):
     st.chat_message("user").write(prompt)
     with st.chat_message("assistant"):
-        st_callback = StreamlitCallbackHandler(st.container())
+        st_callback = StreamlitCallbackHandler(
+            parent_container=st.container(),
+            collapse_completed_thoughts=False
+            )
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
             callbacks=[st_callback],
