@@ -38,34 +38,37 @@ def create_qdrant_client():
     return client
 
 @st.cache_resource(ttl="1h")
-def configure_retriever():
+def configure_retriever(collection_name):
     
     qdrant = Qdrant(
         client=create_qdrant_client(), 
-        collection_name="agent_fuse_comp_ref", 
+        collection_name=collection_name, 
         embeddings=OpenAIEmbeddings())
     
-    return qdrant.as_retriever()
+    # top k and threshold settings see https://python.langchain.com/docs/modules/data_connection/retrievers/vectorstore
+    return qdrant.as_retriever() 
 
-tool = create_retriever_tool(
-    configure_retriever(),
-    "search_camel_component_docs",
-    "Searches and returns documents regarding Camel Components. Camel is a framework for integrating systems",
+comp_ref_tool = create_retriever_tool(
+    configure_retriever("agent_fuse_comp_ref"),
+    "search_camel_component_reference",
+    "Searches and returns documents regarding Camel Components and their configuration options. Camel Components are used within the Camel framework to integrate third-party systems",
 )
-tools = [tool]
-llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-4")
+
+tools = [comp_ref_tool]
+llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
 message = SystemMessage(
     content=(
-        "You are a helpful chatbot who is tasked with answering questions about Apache Camel. "
+        "You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework."
         "Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. "
         "If there is any ambiguity, you probably assume they are about that."
+        "If possible, provide examples that include Java code within the response."
     )
 )
 prompt = OpenAIFunctionsAgent.create_prompt(
     system_message=message,
     extra_prompt_messages=[MessagesPlaceholder(variable_name="history")],
 )
-agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt)
+agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt) # TODO: does it support a `max_iterations` parameter?
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
