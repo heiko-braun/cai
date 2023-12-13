@@ -26,3 +26,10 @@ try:
 except KeyError:
     print('QDRANT_URL is missing!')
     sys.exit()
+
+PG_URL = None
+try:
+    PG_URL = os.environ['PG_URL']
+except KeyError:
+    print('PG_URL is missing!')
+    sys.exit()

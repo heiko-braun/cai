@@ -18,6 +18,7 @@ from qdrant_client import QdrantClient
 from conf.constants import *
 from core.MyStreamlitCallbackHandler import MyStreamlitCallbackHandler
 
+import psycopg2
 
 client = Client()
 
@@ -91,9 +92,28 @@ if "messages" not in st.session_state or st.sidebar.button("Clear message histor
     st.session_state["messages"] = [AIMessage(content=starter_message)]
 
 
-def send_feedback(run_id, score):
-    print(str(run_id), str(score))
-    #client.create_feedback(run_id, "user_score", score=score)
+def send_feedback(run_id, score, prompt, response):
+    #print(str(run_id), str(score), "\nPrompt: "+prompt, "\nResponse:"+ response)
+    conn = None
+    try:
+        conn = psycopg2.connect(PG_URL)
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO feedback (run_id, score, prompt, response)
+            VALUES (%s, %s, %s, %s);    
+            """,
+            (str(run_id), score, prompt, response)
+        )   
+        
+        conn.commit()
+        # close the database communication
+        cur.close()
+    except psycopg2.DatabaseError as error:
+        print("Failed to insert feedback: ", str(error))        
+    finally:
+        if conn is not None:
+            conn.close()    
 
 
 for msg in st.session_state.messages:
@@ -129,7 +149,7 @@ if prompt := st.chat_input(placeholder=starter_message):
             st.text("Feedback:")
 
         with col1:
-            st.button("👍", on_click=send_feedback, args=(run_id, 1))
+            st.button("👍", on_click=send_feedback, args=(run_id, 1, prompt, response["output"]))
 
         with col2:
-            st.button("👎", on_click=send_feedback, args=(run_id, 0))
+            st.button("👎", on_click=send_feedback, args=(run_id, 0, prompt, response["output"]))
