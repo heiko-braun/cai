@@ -18,3 +18,4 @@ pypdf
 html2text
 tiktoken
 faiss-cpu
+psycopg2-binary
