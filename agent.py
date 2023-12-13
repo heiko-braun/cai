@@ -31,7 +31,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-"# Camel Quickstart Assitant"
+"# Camel Quickstart Assistant"
 
 def create_qdrant_client(): 
     client = QdrantClient(
