@@ -100,9 +100,23 @@ starter_message = "How can I help you?"
 if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
     st.session_state["messages"] = [AIMessage(content=starter_message)]
 
+def replay_package():
+    package = []
+    for msg in st.session_state.messages:
+        
+        if msg.content == "":
+            continue
+        
+        if isinstance(msg, AIMessage):        
+            package.append("# Assistant: "+ msg.content + "\n")
+        elif isinstance(msg, HumanMessage):
+            package.append("# User: " + msg.content + "\n")
+    
+    return '\n'.join(package)
+    
 
 def send_feedback(run_id, score, prompt, response):
-    #print(str(run_id), str(score), "\nPrompt: "+prompt, "\nResponse:"+ response)
+    print(replay_package())
     conn = None
     try:
         conn = psycopg2.connect(PG_URL)
@@ -130,7 +144,7 @@ for msg in st.session_state.messages:
     # [hb] don't know how, but empty message sneak in an occupy the UI
     if msg.content == "":
         continue
-    
+
     if isinstance(msg, AIMessage):        
         st.chat_message("assistant").write(msg.content)
     elif isinstance(msg, HumanMessage):
