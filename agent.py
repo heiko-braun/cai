@@ -19,6 +19,8 @@ from conf.constants import *
 from core.MyStreamlitCallbackHandler import MyStreamlitCallbackHandler
 
 import psycopg2
+from langchain.tools import Tool
+
 
 client = Client()
 
@@ -52,16 +54,23 @@ def configure_retriever(collection_name):
         search_kwargs={"k": 5}
         ) 
 
-comp_ref_tool = create_retriever_tool(
+def create_lookup_tool(retriever, name, description):
+    return Tool(
+        name=name,
+        description=description,
+        func=retriever.get_relevant_documents                       
+    )
+
+comp_ref_tool = create_lookup_tool(
     configure_retriever("agent_fuse_comp_ref"),
     "search_camel_component_reference",
-    "Useful when you need to answer questions about Camel Components and their configuration options. Input should be the name of a Camel component or a third-paty system to integrate with",
+    "Useful when you need to answer questions about Camel Components and their configuration options. Input should be the name of a Camel component or a system (service) to integrate with",
 )
 
-camel_dev_tool = create_retriever_tool(
+camel_dev_tool = create_lookup_tool(
     configure_retriever("agent_fuse_camel_dev"),
     "search_camel_developer_guide",
-    "Useful when you need to answer questions about core concepts and API's used to develop Camel applications. Input should be technical concepts and terms reflecting parts of the Camel framework",
+    "Useful when you need to answer questions about core concepts and API's used to develop Camel applications. Input should be technical concepts reflecting parts of the Camel framework",
 )
 
 
