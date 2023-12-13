@@ -7,7 +7,7 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
 from langchain.chat_models import ChatOpenAI
-from langchain.schema import SystemMessage, AIMessage, HumanMessage
+from langchain.schema import SystemMessage, AIMessage, HumanMessage, BaseMessage, FunctionMessage
 from langchain.prompts import MessagesPlaceholder
 
 from langsmith import Client
@@ -126,12 +126,17 @@ def send_feedback(run_id, score, prompt, response):
 
 
 for msg in st.session_state.messages:
-    if isinstance(msg, AIMessage):
+    
+    # [hb] don't know how, but empty message sneak in an occupy the UI
+    if msg.content == "":
+        continue
+    
+    if isinstance(msg, AIMessage):        
         st.chat_message("assistant").write(msg.content)
     elif isinstance(msg, HumanMessage):
         st.chat_message("user").write(msg.content)
+    
     memory.chat_memory.add_message(msg)
-
 
 if prompt := st.chat_input(placeholder=starter_message):
     st.chat_message("user").write(prompt)
@@ -140,7 +145,7 @@ if prompt := st.chat_input(placeholder=starter_message):
             parent_container=st.container(),
             collapse_completed_thoughts=True,
             expand_new_thoughts=False,
-            max_thought_containers=5            
+            max_thought_containers=4            
             )
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
