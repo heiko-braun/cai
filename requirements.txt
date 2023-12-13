@@ -5,6 +5,8 @@ urllib3
 requests
 jmespath
 langchain
+langchain-core
+langchain-community
 qdrant-client==1.7.0
 multiprocess
 tenacity

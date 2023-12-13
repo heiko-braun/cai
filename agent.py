@@ -1,7 +1,6 @@
 import streamlit as st
 
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.callbacks import StreamlitCallbackHandler
 from langchain.agents import OpenAIFunctionsAgent, AgentExecutor
 from langchain.agents.agent_toolkits import create_retriever_tool
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
@@ -17,6 +16,7 @@ from langsmith import Client
 from langchain.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from conf.constants import *
+from core.MyStreamlitCallbackHandler import MyStreamlitCallbackHandler
 
 
 client = Client()
@@ -54,13 +54,13 @@ def configure_retriever(collection_name):
 comp_ref_tool = create_retriever_tool(
     configure_retriever("agent_fuse_comp_ref"),
     "search_camel_component_reference",
-    "Searches and returns documents regarding Camel Components and their configuration options. Camel Components are used within the Camel framework to integrate third-party systems",
+    "Useful when you need to answer questions about Camel Components and their configuration options. Input should be the name of a Camel component or a third-paty system to integrate with",
 )
 
 camel_dev_tool = create_retriever_tool(
     configure_retriever("agent_fuse_camel_dev"),
     "search_camel_developer_guide",
-    "Searches and returns documents regarding core concepts and API's used to develop Camel applications. The developer guide also explains how to leverage the enterprise integration patterns in Camel.",
+    "Useful when you need to answer questions about core concepts and API's used to develop Camel applications. Input should be technical concepts and terms reflecting parts of the Camel framework",
 )
 
 
@@ -107,10 +107,11 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input(placeholder=starter_message):
     st.chat_message("user").write(prompt)
     with st.chat_message("assistant"):
-        st_callback = StreamlitCallbackHandler(
+        st_callback = MyStreamlitCallbackHandler(
             parent_container=st.container(),
             collapse_completed_thoughts=True,
-            expand_new_thoughts=False
+            expand_new_thoughts=False,
+            max_thought_containers=1            
             )
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
