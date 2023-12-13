@@ -11,6 +11,10 @@ from langchain_core.outputs import LLMResult
 
 from langchain_community.callbacks.streamlit.mutable_expander import MutableExpander
 
+# output parsing 
+import re
+import json
+
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
 
@@ -369,6 +373,16 @@ class MyStreamlitCallbackHandler(BaseCallbackHandler):
         llm_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
+        
+        # [hb] adjust output
+        try:           
+           matches = re.findall("(?<=page_number')(?:\s*\:\s*)('.{0,23}?(?=')')", output, re.DOTALL)     
+           if(len(matches)>1):            
+            output = "Pages: " + " | ".join(matches) 
+           
+        except Exception as e:
+            print("Failed to parse tool output: ", e)        
+
         self._require_current_thought().on_tool_end(
             output, color, observation_prefix, llm_prefix, **kwargs
         )

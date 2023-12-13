@@ -111,7 +111,7 @@ if prompt := st.chat_input(placeholder=starter_message):
             parent_container=st.container(),
             collapse_completed_thoughts=True,
             expand_new_thoughts=False,
-            max_thought_containers=1            
+            max_thought_containers=5            
             )
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
