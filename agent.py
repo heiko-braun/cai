@@ -132,12 +132,14 @@ def replay_package():
             package.append("# Assistant: "+ msg.content + "\n")
         elif isinstance(msg, HumanMessage):
             package.append("# User: " + msg.content + "\n")
-    
-    return '\n'.join(package)
+
+    orig_prompt = package[1:2][0]
+    full_thread = '\n'.join(package)
+    return orig_prompt, full_thread 
     
 
 def send_feedback(run_id, score, prompt, response):
-    print(replay_package())
+    orig_prompt, full_thread = replay_package()
     conn = None
     try:
         conn = psycopg2.connect(PG_URL)
@@ -147,7 +149,7 @@ def send_feedback(run_id, score, prompt, response):
             INSERT INTO feedback (run_id, score, prompt, response)
             VALUES (%s, %s, %s, %s);    
             """,
-            (str(run_id), score, prompt, response)
+            (str(run_id), score, orig_prompt, full_thread)
         )   
         
         conn.commit()
