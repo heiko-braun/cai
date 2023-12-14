@@ -94,7 +94,7 @@ def pagenum(name):
 # arguments
 parser = argparse.ArgumentParser(description='Upsert PDF pages')
 parser.add_argument('-c', '--collection', help='The target collection name', required=True)
-parser.add_argument('-s', '--start', help='Start page number', required=False, default=0)
+parser.add_argument('-s', '--start', help='Start of the batch', required=False, default=0)
 parser.add_argument('-b', '--batchsize', help='Batch size (How many pages)', required=False, default=10)
 parser.add_argument('-p', '--processes', help='Number of parallel processes', required=False, default=2)
 args = parser.parse_args()
