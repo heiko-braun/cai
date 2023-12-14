@@ -61,6 +61,8 @@ def create_lookup_tool(retriever, name, description):
         func=retriever.get_relevant_documents                       
     )
 
+# tools offering access to explicit knowledge
+
 comp_ref_tool = create_lookup_tool(
     configure_retriever("agent_fuse_comp_ref"),
     "search_camel_component_reference",
@@ -73,8 +75,27 @@ camel_dev_tool = create_lookup_tool(
     "Useful when you need to answer questions about core concepts and API's used to develop Camel applications. Input should be technical concepts reflecting parts of the Camel framework",
 )
 
+spring_devel_tool = create_lookup_tool(
+    configure_retriever("agent_spring_deploy"),
+    "search_spring_camel_developer_guide",
+    "Useful when you need to answer questions about using Camel with Spring Boot, i.e configuration options or APIs. Input should be a term related to Spring Boot with Camel",
+)
 
-tools = [comp_ref_tool, camel_dev_tool]
+spring_started_tool = create_lookup_tool(
+    configure_retriever("agent_spring_getstarted"),
+    "search_spring_getting_started",
+    "Useful when you need to answer questions about setting up spring boot projects with Camel. Input should be a term related to spring boot project setup",
+)
+
+fuse_openshift_tool = create_lookup_tool(
+    configure_retriever("agent_fuse_openshift"),
+    "search_fuse_openshift",
+    "Useful when you need to answer questions about how to deplopy Camel applicaiton to Openshift. Input should be a term related to Camel on Openshift (Kubernetes)",
+)
+
+tools = [comp_ref_tool, camel_dev_tool, spring_started_tool, spring_devel_tool, fuse_openshift_tool]
+
+# LLM instructions
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
 message = SystemMessage(
     content=(
