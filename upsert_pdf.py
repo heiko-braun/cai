@@ -131,7 +131,7 @@ if end >= len(filenames):
     end = len(filenames)
 
 for name in filenames[start:end]:
-    print("Loading : ", name)
+    #print("Loading : ", name)
     file_content = None
     with open(name) as f:                
         file_content = f.read()
