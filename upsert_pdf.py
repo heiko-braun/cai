@@ -41,7 +41,7 @@ PROMPT_TEMPLATE = PromptTemplate.from_template(
         If a particular piece of information is not present, output \"Not specified\".
 
         Use the following format:
-        0. What's the Camel compoment name                    
+        0. What's the Camel component name                    
         1. What are relevant technical concepts mentioned
         3. What thirdparty services or tools are mentioned                
 
