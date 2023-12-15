@@ -24,6 +24,8 @@ import regex as re
 import argparse
 import uuid
 
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 # ---
 
 # create an embedding using openai
@@ -95,6 +97,7 @@ parser.add_argument('-s', '--start', help='Start of the batch', required=False, 
 parser.add_argument('-b', '--batchsize', help='Batch size (How many pages)', required=False, default=10)
 parser.add_argument('-p', '--processes', help='Number of parallel processes', required=False, default=2)
 parser.add_argument('-m', '--mode', help='Parser mode (pdf|web)', required=False, default="pdf")
+parser.add_argument('-f', '--file', help='Upsert indivual file', required=False)
 args = parser.parse_args()
 
 # the regex used to extract a reference form the filename
@@ -103,8 +106,11 @@ if(args.mode == "web"):
     ID_REF_REGEX = "(?<=_)(?:\S*)(.{0,50}?(?=.txt))"
 
 filenames = []
-for _file in glob.glob(TEXT_DIR+args.collection+"/*.txt"):
-    filenames.append(_file)
+if(args.file is None):
+    for _file in glob.glob(TEXT_DIR+args.collection+"/*.txt"):
+        filenames.append(_file)
+else:
+    filenames.append(args.file)
 
 # sort
 def pagenum(name):
@@ -122,20 +128,35 @@ end = int(args.start)+int(args.batchsize)
 
 # guardrails
 if end >= len(filenames):
-    end = len(filenames)-1
+    end = len(filenames)
 
 for name in filenames[start:end]:
-    #print("Loading : ", name)
+    print("Loading : ", name)
     file_content = None
     with open(name) as f:                
         file_content = f.read()
     
     page_ref = re.search(ID_REF_REGEX, name)[0]
     
-    docfiles.append({
-        "page": str(page_ref),
-        "content": file_content
-    })
+    # split files if needed
+    threshold = 50000
+    if(len(file_content)> threshold):
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = threshold,
+            chunk_overlap  = 0            
+        )
+        chunks = text_splitter.split_text(file_content)
+
+        for i,chunk in enumerate(chunks):
+            docfiles.append({
+                "page": str(page_ref)+"_"+str(i),
+                "content": chunk
+            })        
+    else:
+        docfiles.append({
+            "page": str(page_ref),
+            "content": file_content
+        })
 
 print("Upserting N pages: ", len(docfiles))
 
@@ -179,11 +200,11 @@ def do_job(tasks_to_accomplish):
                                 
                 openai_client = create_openai_client()    
 
-                # extract keywords                
+                # extract keywords                                
                 entities = extract_keywords(openai_client, page_content)
-
-                # create embeddings          
-                embeddings = get_embedding(openai_client, text=entities)
+                
+                # create embeddings                          
+                embeddings = get_embedding(openai_client, text=entities)                
 
             except Exception as e:
                 print("Failed to call openai (skipping ... ): ", page_ref)                
