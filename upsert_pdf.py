@@ -161,7 +161,7 @@ for name in filenames[start:end]:
 print("Upserting N pages: ", len(docfiles))
 
 # start with a fresh DB everytime this file is run from a zero index
-if(start==0):
+if(start==0 and args.file is None):
     print("Recreate collection ", args.collection)
     create_qdrant_client().recreate_collection(
         collection_name=args.collection,
