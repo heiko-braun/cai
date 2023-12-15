@@ -19,9 +19,10 @@ from tenacity import (
 )
 
 import sys
-import re
+import regex as re
 
 import argparse
+import uuid
 
 # ---
 
@@ -87,23 +88,32 @@ def create_qdrant_client():
         
 # --- 
 
-# data
-def pagenum(name):
-    return int(re.search("[0-9]+", name)[0])
-
 # arguments
 parser = argparse.ArgumentParser(description='Upsert PDF pages')
 parser.add_argument('-c', '--collection', help='The target collection name', required=True)
 parser.add_argument('-s', '--start', help='Start of the batch', required=False, default=0)
 parser.add_argument('-b', '--batchsize', help='Batch size (How many pages)', required=False, default=10)
 parser.add_argument('-p', '--processes', help='Number of parallel processes', required=False, default=2)
+parser.add_argument('-m', '--mode', help='Parser mode (pdf|web)', required=False, default="pdf")
 args = parser.parse_args()
+
+# the regex used to extract a reference form the filename
+ID_REF_REGEX = "[0-9]+" # defaults to PDF mode
+if(args.mode == "web"):
+    ID_REF_REGEX = "(?<=_)(?:\S*)(.{0,50}?(?=.txt))"
 
 filenames = []
 for _file in glob.glob(TEXT_DIR+args.collection+"/*.txt"):
     filenames.append(_file)
 
-filenames.sort(key=pagenum)
+# sort
+def pagenum(name):
+    return int(re.search("[0-9]+", name)[0])
+
+if(args.mode == "pdf"):
+    filenames.sort(key=pagenum)
+else:
+    filenames.sort()
 
 # preparations for ingestion
 docfiles = []
@@ -115,15 +125,15 @@ if end >= len(filenames):
     end = len(filenames)-1
 
 for name in filenames[start:end]:
-    
+    #print("Loading : ", name)
     file_content = None
     with open(name) as f:                
         file_content = f.read()
-
-    page_number = re.search("[0-9]+", name)[0]
+    
+    page_ref = re.search(ID_REF_REGEX, name)[0]
     
     docfiles.append({
-        "page": str(page_number),
+        "page": str(page_ref),
         "content": file_content
     })
 
@@ -160,10 +170,10 @@ def do_job(tasks_to_accomplish):
                 message to task_that_are_done queue
             '''
 
-            page_number = str(task["page_number"])
+            page_ref = str(task["page_ref"])
             page_content = task["page_content"]
             
-            print("Start page '"+ page_number+ "'")
+            print("Start page '"+ page_ref+ "'")
             
             try:
                                 
@@ -176,7 +186,7 @@ def do_job(tasks_to_accomplish):
                 embeddings = get_embedding(openai_client, text=entities)
 
             except Exception as e:
-                print("Failed to call openai (skipping ... ): ", page_number)                
+                print("Failed to call openai (skipping ... ): ", page_ref)                
                 print(e)
                 continue            
 
@@ -197,12 +207,12 @@ def do_job(tasks_to_accomplish):
                     collection_name=args.collection,
                     points=[
                         models.PointStruct(
-                            id=int(page_number),
+                            id=str(uuid.uuid4()),
                             vector=embeddings,
                             payload={
                                 "page_content": "\""+page_content+"\"",
                                 "metadata": {
-                                    "page_number": page_number,
+                                    "page_number": page_ref,
                                     "entities": entities            
                                 }
                             }
@@ -213,11 +223,11 @@ def do_job(tasks_to_accomplish):
                 
                 
             except Exception as e:
-                print("Failed to upsert page (skipping ... ): ", page_number)
+                print("Failed to upsert page (skipping ... ): ", page_ref)
                 print(e)
                 continue            
 
-            print("Page ", page_number, " completed \n")
+            print("Page ", page_ref, " completed \n")
             
     return True
 
@@ -232,7 +242,7 @@ def main():
     for doc in docfiles:
         tasks_to_accomplish.put(
             {
-                "page_number": int(doc["page"]),
+                "page_ref": doc["page"],
                 "page_content": doc["content"]
             }
         )
