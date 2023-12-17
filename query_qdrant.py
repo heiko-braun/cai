@@ -2,8 +2,10 @@ from openai import OpenAI
 from conf.constants import *
 
 from qdrant_client import QdrantClient
+import argparse
 
 # ---
+
 
 # create an embedding using openai
 def get_embedding(openai_client, text, model="text-embedding-ada-002"):
@@ -35,13 +37,22 @@ qdrant_client = QdrantClient(
     api_key=QDRANT_KEY,
 )
 
+# arguments
+parser = argparse.ArgumentParser(description='Extract PDF pages')
+parser.add_argument('-c', '--collection', help='The target collection name', required=True)
+parser.add_argument('-k', '--topk', help='Num top k', required=False, default=5)
+args = parser.parse_args()
+
+# exceute query
 query_results = query_qdrant(
     openai_client=openai_client, 
     qdrant_client=qdrant_client, 
     query=input("Prompt:"), 
-    collection_name='agent_fuse_comp_ref'
+    collection_name=args.collection,
+    top_k=args.topk
     )
 
+# list results oreder by score
 print("Found N matches: ", len(query_results))
 for i, article in enumerate(query_results):    
     #print(article)
