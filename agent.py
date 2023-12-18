@@ -22,6 +22,8 @@ import psycopg2
 from langchain.tools import Tool
 
 
+from core.CustomTools import QuarkusReferenceTool
+
 client = Client()
 
 st.set_page_config(
@@ -61,8 +63,13 @@ def create_lookup_tool(retriever, name, description):
         func=retriever.get_relevant_documents                       
     )
 
-# tools offering access to explicit knowledge
 
+def query_quarkus_stores(query: str) -> str:
+    """Sends a POST request to the given url with the given body and parameters."""
+    result = requests.post(url, json=body, params=parameters)
+    return f"Status: {result.status_code} - {result.text}"
+
+# tools offering access to explicit knowledge
 tooling_guide = create_lookup_tool(
     configure_retriever("tooling_guide"),
     "search_tooling_guide",
@@ -72,16 +79,16 @@ tooling_guide = create_lookup_tool(
 spring_reference = create_lookup_tool(
     configure_retriever("spring_reference"),
     "search_spring_reference",
-    "Useful when you need to answer questions about Camel Components used with Spring Boot, i.e component configuration options or specifics of third-party systems. Input should be a Camel Camel",
+    "Useful when you need to answer questions about Camel Components used with Spring Boot, i.e component configuration options or specifics of third-party systems.",
 )
 
 spring_started_tool = create_lookup_tool(
     configure_retriever("spring_get_started"),
     "search_spring_getting_started",
-    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a term related to spring boot project setup",
+    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a term related to spring boot project setup.",
 )
 
-tools = [spring_started_tool, spring_reference, tooling_guide]
+tools = [spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool()]
 
 # LLM instructions
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
