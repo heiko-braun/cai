@@ -63,37 +63,25 @@ def create_lookup_tool(retriever, name, description):
 
 # tools offering access to explicit knowledge
 
-comp_ref_tool = create_lookup_tool(
-    configure_retriever("agent_fuse_comp_ref"),
-    "search_camel_component_reference",
-    "Useful when you need to answer questions about Camel Components and their configuration options. Input should be the name of a Camel component or a system (service) to integrate with",
+tooling_guide = create_lookup_tool(
+    configure_retriever("tooling_guide"),
+    "search_tooling_guide",
+    "Useful when you need to answer questions about tools used when developing Camel application. Input should be terms of certain tools or workflows when developing",
 )
 
-camel_dev_tool = create_lookup_tool(
-    configure_retriever("agent_fuse_camel_dev"),
-    "search_camel_developer_guide",
-    "Useful when you need to answer questions about core concepts and API's used to develop Camel applications. Input should be technical concepts reflecting parts of the Camel framework",
-)
-
-spring_devel_tool = create_lookup_tool(
-    configure_retriever("agent_spring_deploy"),
-    "search_spring_camel_developer_guide",
-    "Useful when you need to answer questions about using Camel with Spring Boot, i.e configuration options or APIs. Input should be a term related to Spring Boot with Camel",
+spring_reference = create_lookup_tool(
+    configure_retriever("spring_reference"),
+    "search_spring_reference",
+    "Useful when you need to answer questions about Camel Components used with Spring Boot, i.e component configuration options or specifics of third-party systems. Input should be a Camel Camel",
 )
 
 spring_started_tool = create_lookup_tool(
-    configure_retriever("agent_spring_getstarted"),
+    configure_retriever("spring_get_started"),
     "search_spring_getting_started",
-    "Useful when you need to answer questions about setting up spring boot projects with Camel. Input should be a term related to spring boot project setup",
+    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a term related to spring boot project setup",
 )
 
-fuse_openshift_tool = create_lookup_tool(
-    configure_retriever("agent_fuse_openshift"),
-    "search_fuse_openshift",
-    "Useful when you need to answer questions about how to deplopy Camel applicaiton to Openshift. Input should be a term related to Camel on Openshift (Kubernetes)",
-)
-
-tools = [comp_ref_tool, camel_dev_tool, spring_started_tool, spring_devel_tool, fuse_openshift_tool]
+tools = [spring_started_tool, spring_reference, tooling_guide]
 
 # LLM instructions
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
