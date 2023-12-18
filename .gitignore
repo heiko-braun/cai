@@ -11,3 +11,4 @@ docker_build.sh
 run_examples.sh
 upload_examples.sh
 answers
+.ipynb_checkpoints
