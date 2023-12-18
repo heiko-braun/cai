@@ -29,7 +29,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # ---
 
 # create an embedding using openai
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1))
+@retry(wait=wait_random_exponential(min=10, max=60), stop=stop_after_attempt(1))
 def get_embedding(openai_client, text, model="text-embedding-ada-002"):
    start = time.time()
    text = text.replace("\n", " ")
@@ -59,7 +59,7 @@ PROMPT_TEMPLATE = PromptTemplate.from_template(
     )
 
 # extract keywords using the chat API with custom prompt
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1))
+@retry(wait=wait_random_exponential(min=10, max=60), stop=stop_after_attempt(1))
 def extract_keywords(openai_client, document):
     start = time.time()
     message = PROMPT_TEMPLATE.format(text=document)
@@ -131,7 +131,7 @@ if end >= len(filenames):
     end = len(filenames)
 
 for name in filenames[start:end]:
-    #print("Loading : ", name)
+    
     file_content = None
     with open(name) as f:                
         file_content = f.read()
@@ -214,15 +214,7 @@ def do_job(tasks_to_accomplish):
             try:    
 
                 qdrant_client = create_qdrant_client()
-
-                # Expected schema to be compatible with langchain retriever
-                # {
-                #     "page_content": "Lorem ipsum dolor sit amet",
-                #     "metadata": {
-                #         "foo": "bar"
-                #     }
-                # }
-
+            
                 # Upsert        
                 upsert_resp = qdrant_client.upsert(
                     collection_name=args.collection,
@@ -274,7 +266,7 @@ def main():
         processes.append(p)
         p.start()
 
-    # completing process
+    # completing processes
     for p in processes:
         p.join()
     
