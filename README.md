@@ -1,4 +1,4 @@
-# OpenAI Assistant that serves knowledge about Apache Camel
+# Camel Quickstart Assistant
 
 ## Setup (Mac OS)
 
@@ -22,6 +22,7 @@ export OPENAI_API_KEY="..."
 export QDRANT_KEY="..."
 export QDRANT_URL="..."
 export COHERE_KEY="..."
+export PG_URL="..."
 ```
 
 #### ASSISTANT_ID
@@ -77,7 +78,14 @@ Once the process completes, you should have a text-only representation of the do
 
 The data prepared, needs to be indexed and will be kept in a vector DB to enable semantic search for the agent.
 
-In a second step you need to upsert data using the `upsert` tools available.
+In a second step you need to upsert data using the `upsert` tools available:
+
+```
+python upsert_pdf.py 
+
+usage: upsert_pdf.py [-h] -c COLLECTION [-s START] [-b BATCHSIZE] [-p PROCESSES] [-m MODE] [-f FILE]
+
+```
 
 Once the process completes, you should have a meta data and vector embeddings in QDrant (http://qdrant.tech/).
 
@@ -87,16 +95,7 @@ Once the process completes, you should have a meta data and vector embeddings in
 ## Using the assistant
 
 ```
-python assistant.py
-
-Prompt: How do I perform content filtering in Camel? Show me an example.
-
-```
-
-or alternatively, if you prefer a graphical interface: 
-
-```
-streamlit run ui.py
+streamlit run agent.py
 ```
 
 [...]
