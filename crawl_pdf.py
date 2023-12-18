@@ -42,9 +42,11 @@ create_data_dir(args.collection)
 
 # load files and split into chunks (page wise)
 # [hb] see if we can do chapter wise
+print("Loading ", args.filename)
 loader = PyPDFLoader(args.filename)
 pages = loader.load_and_split()
 
+print("Parsing PDF ...")
 offset = int(args.start)
 for page in pages[offset:]:
     page_num = page.metadata["page"]
