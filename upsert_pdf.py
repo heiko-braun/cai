@@ -103,7 +103,7 @@ args = parser.parse_args()
 # the regex used to extract a reference form the filename
 ID_REF_REGEX = "[0-9]+" # defaults to PDF mode
 if(args.mode == "web"):
-    ID_REF_REGEX = "(?<=_)(?:\S*)(.{0,50}?(?=.txt))"
+    ID_REF_REGEX = "_([^_]+)_([^_]+)$"
 
 filenames = []
 if(args.file is None):
@@ -139,7 +139,7 @@ for name in filenames[start:end]:
     page_ref = re.search(ID_REF_REGEX, name)[0]
     
     # split files if needed
-    threshold = 50000
+    threshold = 2500
     if(len(file_content)> threshold):
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size = threshold,
