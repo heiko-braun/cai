@@ -1,7 +1,7 @@
 import streamlit as st
 
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.agents import OpenAIFunctionsAgent, AgentExecutor
+from langchain.agents import OpenAIFunctionsAgent, AgentExecutor, initialize_agent, AgentType
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
@@ -63,12 +63,6 @@ def create_lookup_tool(retriever, name, description):
         func=retriever.get_relevant_documents                       
     )
 
-
-def query_quarkus_stores(query: str) -> str:
-    """Sends a POST request to the given url with the given body and parameters."""
-    result = requests.post(url, json=body, params=parameters)
-    return f"Status: {result.status_code} - {result.text}"
-
 # tools offering access to explicit knowledge
 tooling_guide = create_lookup_tool(
     configure_retriever("tooling_guide"),
@@ -94,7 +88,6 @@ quarkus_started_tool = create_lookup_tool(
     "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
 )
 
-
 tools = [CamelCoreTool(), spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
 
 # LLM instructions
@@ -104,19 +97,26 @@ message = SystemMessage(
         "You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework."
         "Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. "
         "You always request additional information using the functions provided before answering the original question." 
-        "Provide a code example in Java when it is applicable"       
+        "Provide a code examples in Java when it is applicable"       
     )
 )
 prompt = OpenAIFunctionsAgent.create_prompt(
     system_message=message,
     extra_prompt_messages=[MessagesPlaceholder(variable_name="history")],
 )
-agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt) # TODO: does it support a `max_iterations` parameter?
+agent = OpenAIFunctionsAgent(
+     llm=llm, 
+     tools=tools, 
+     prompt=prompt
+     ) 
+
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
     verbose=False,
     return_intermediate_steps=True,
+    max_iterations=5,
+    early_stopping_method="generate",
 )
 memory = AgentTokenBufferMemory(llm=llm)
 starter_message = "How can I help you?"
