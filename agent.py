@@ -22,7 +22,7 @@ import psycopg2
 from langchain.tools import Tool
 
 
-from core.CustomTools import QuarkusReferenceTool
+from core.CustomTools import QuarkusReferenceTool, CamelCoreTool
 
 client = Client()
 
@@ -73,29 +73,29 @@ def query_quarkus_stores(query: str) -> str:
 tooling_guide = create_lookup_tool(
     configure_retriever("tooling_guide"),
     "search_tooling_guide",
-    "Useful when you need to answer questions about tools used when developing Camel application. Input should be terms of certain tools or workflows when developing",
+    "Useful when you need to answer questions about tools used when developing Camel application. Input should be a list of tools or workflows used for developing camel applications.",
 )
 
 spring_reference = create_lookup_tool(
     configure_retriever("spring_reference"),
     "search_spring_reference",
-    "Useful when you need to answer questions about Camel Components used with Spring Boot, i.e component configuration options or specifics of third-party systems.",
+    "Useful when you need to answer questions about Camel Components used with Spring Boot. Input should be a list of camel components or the name of third-party systems.",
 )
 
 spring_started_tool = create_lookup_tool(
     configure_retriever("spring_get_started"),
     "search_spring_getting_started",
-    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a term related to Spring Boot project setup.",
+    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a a list of terms related to Spring Boot project setup.",
 )
 
 quarkus_started_tool = create_lookup_tool(
     configure_retriever("quarkus_getting_started"),
     "search_quarkus_getting_started",
-    "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a term related to Quarkus (or Camel Quakrus) project setup.",
+    "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a list of terms related to Quarkus (or Camel Quakrus) project setup.",
 )
 
 
-tools = [spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
+tools = [CamelCoreTool(), spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
 
 # LLM instructions
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
