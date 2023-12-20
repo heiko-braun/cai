@@ -50,8 +50,8 @@ def configure_retriever(collection_name):
         embeddings=OpenAIEmbeddings())
     
     retriever = qdrant.as_retriever(        
-        #search_type="mmr",
-        search_kwargs={"k": 5}
+        search_type="mmr",
+        search_kwargs={"fetch_k":15, "k": 5}
         ) 
         
     return retriever
