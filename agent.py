@@ -120,7 +120,7 @@ agent_executor = AgentExecutor(
 )
 memory = AgentTokenBufferMemory(llm=llm)
 starter_message = "How can I help you?"
-if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
+if "messages" not in st.session_state or st.button("Clear Thread"):
     st.session_state["messages"] = [AIMessage(content=starter_message)]
 
 def replay_package():
