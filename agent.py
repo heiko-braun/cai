@@ -2,12 +2,11 @@ import streamlit as st
 
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.agents import OpenAIFunctionsAgent, AgentExecutor
-from langchain.agents.agent_toolkits import create_retriever_tool
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
 from langchain.chat_models import ChatOpenAI
-from langchain.schema import SystemMessage, AIMessage, HumanMessage, BaseMessage, FunctionMessage
+from langchain.schema import SystemMessage, AIMessage, HumanMessage
 from langchain.prompts import MessagesPlaceholder
 
 from langsmith import Client
@@ -50,11 +49,12 @@ def configure_retriever(collection_name):
         collection_name=collection_name, 
         embeddings=OpenAIEmbeddings())
     
-    # top k and threshold settings see https://python.langchain.com/docs/modules/data_connection/retrievers/vectorstore
-    return qdrant.as_retriever(        
-        search_type="mmr",
+    retriever = qdrant.as_retriever(        
+        #search_type="mmr",
         search_kwargs={"k": 5}
         ) 
+        
+    return retriever
 
 def create_lookup_tool(retriever, name, description):
     return Tool(
@@ -73,13 +73,13 @@ def query_quarkus_stores(query: str) -> str:
 tooling_guide = create_lookup_tool(
     configure_retriever("tooling_guide"),
     "search_tooling_guide",
-    "Useful when you need to answer questions about tools used when developing Camel application. Input should be a list of tools or workflows used for developing camel applications.",
+    "Useful when you need to answer questions about tools for developing Camel applications. Input should be a list of tools for developing Camel applications.",
 )
 
 spring_reference = create_lookup_tool(
     configure_retriever("spring_reference"),
     "search_spring_reference",
-    "Useful when you need to answer questions about Camel Components used with Spring Boot. Input should be a list of camel components or the name of third-party systems.",
+    "Useful when you need to answer questions about Camel Components used with Spring Boot. Input should be a list of Camel components to integrate third-party systems.",
 )
 
 spring_started_tool = create_lookup_tool(
@@ -91,7 +91,7 @@ spring_started_tool = create_lookup_tool(
 quarkus_started_tool = create_lookup_tool(
     configure_retriever("quarkus_getting_started"),
     "search_quarkus_getting_started",
-    "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a list of terms related to Quarkus (or Camel Quakrus) project setup.",
+    "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
 )
 
 
@@ -103,8 +103,8 @@ message = SystemMessage(
     content=(
         "You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework."
         "Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. "
-        "You always request additional information using the functions provided before answering the original question."
-        "If possible, provide examples that include Java code within the response."
+        "You always request additional information using the functions provided before answering the original question." 
+        "Provide a code example in Java when it is applicable"       
     )
 )
 prompt = OpenAIFunctionsAgent.create_prompt(
