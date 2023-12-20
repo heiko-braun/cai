@@ -25,43 +25,6 @@ export COHERE_KEY="..."
 export PG_URL="..."
 ```
 
-#### ASSISTANT_ID
-
-Make sure you have set the `ASSISTANT_ID` environment variable, pointing to the assistant that leverages the right function (below) (https://platform.openai.com/assistants).
-
-The assistant should be prepared with some instruction-tuning:
-
-```
-You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework. 
-
-You should only answer based on the files found or any function provided. 
-```
-
-But more importantly it needs the following custom function:
-
-```
-{
-  "name": "lookup_docs",
-  "description": "Lookup additonal documentation for camel components",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "entities": {
-        "type": "array",
-        "description": "List of top 5 entities extracted from text",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": [
-      "entities"
-    ]
-  }
-}
-```
-
-
 ## Data Preparation
 
 ### Step 1: Prepare the local data
