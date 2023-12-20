@@ -85,10 +85,17 @@ spring_reference = create_lookup_tool(
 spring_started_tool = create_lookup_tool(
     configure_retriever("spring_get_started"),
     "search_spring_getting_started",
-    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a term related to spring boot project setup.",
+    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a term related to Spring Boot project setup.",
 )
 
-tools = [spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool()]
+quarkus_started_tool = create_lookup_tool(
+    configure_retriever("quarkus_getting_started"),
+    "search_quarkus_getting_started",
+    "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a term related to Quarkus (or Camel Quakrus) project setup.",
+)
+
+
+tools = [spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
 
 # LLM instructions
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
@@ -108,7 +115,7 @@ agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt) # TODO: does i
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
-    verbose=True,
+    verbose=False,
     return_intermediate_steps=True,
 )
 memory = AgentTokenBufferMemory(llm=llm)
