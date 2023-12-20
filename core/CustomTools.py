@@ -58,12 +58,12 @@ def create_qdrant_client():
     )
     return client
 
-def fetch_and_rerank(entities):
+def fetch_and_rerank(entities, collections):
     response_documents = []
     first_iteration_hits = []
 
     # lookup across multiple vector store
-    for collection_name in ["quarkus_reference", "rhaetor.github.io_components"]:
+    for collection_name in collections:
             
         query_results = query_qdrant(entities, collection_name=collection_name)
         num_matches = len(query_results)
@@ -89,7 +89,7 @@ def fetch_and_rerank(entities):
         model = 'rerank-english-v2.0',
         query = entities,
         documents = hit_contents,
-        top_n = 6
+        top_n = 5
     )
     
     # the final results
@@ -116,13 +116,30 @@ def fetch_and_rerank(entities):
 
 class QuarkusReferenceTool(BaseTool):
     name = "search_quarkus_reference"
-    description = "Useful when you need to answer questions about Camel Components used with Camel Quarkus, i.e component configuration options or specifics of third-party systems."
+    description = "Useful when you need to answer questions about Camel Components used with Camel Quarkus. Input should be a list of camel components or the names of third-party systems."
 
     def _run(
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Use the tool."""
-        return fetch_and_rerank(query)
+        return fetch_and_rerank(query, ["quarkus_reference", "rhaetor.github.io_components"])
+
+    async def _arun(
+        self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
+    ) -> str:
+        """Use the tool asynchronously."""
+        raise NotImplementedError("custom_search does not support async")
+
+
+class CamelCoreTool(BaseTool):
+    name = "search_camel_core"
+    description = "Useful when you need to answer questions about enterprise integration patterns, languages or data formats in Camel, as well as the framework in general. Input should be a list of terms related to the core Camel framework"
+
+    def _run(
+        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    ) -> str:
+        """Use the tool."""
+        return fetch_and_rerank(query, ["rhaetor.github.io", "rhaetor.github.io_components"])
 
     async def _arun(
         self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
