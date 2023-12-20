@@ -193,7 +193,7 @@ class LLMThought:
         llm_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        self._container.markdown(f"**{output}**")
+        self._container.markdown(f"{output}")
 
     def on_tool_error(self, error: BaseException, **kwargs: Any) -> None:
         self._container.markdown("**Tool encountered an error...**")
@@ -374,11 +374,20 @@ class MyStreamlitCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         
+        #print(output)
+
         # [hb] adjust output
+        page_ref_regex = "(?<=page_number')(?:\s*\:\s*)('\S+(?=')')"
         try:           
-           matches = re.findall("(?<=page_number')(?:\s*\:\s*)('.{0,23}?(?=')')", output, re.DOTALL)     
+           matches = re.findall(page_ref_regex, output, re.DOTALL)     
            if(len(matches)>1):            
-            output = "Pages: " + " | ".join(matches) 
+            output = "Page References: \n"
+            for m in matches:
+                output += "- "
+                output += m
+                output += "\n"            
+           elif(len(matches)==0):            
+            output = "(Output has been suppressed)"   
            
         except Exception as e:
             print("Failed to parse tool output: ", e)        

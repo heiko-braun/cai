@@ -10,6 +10,7 @@ import cohere
 from qdrant_client import QdrantClient
 
 from langchain.tools import BaseTool, StructuredTool, Tool, tool
+from langchain.docstore.document import Document
 from openai import OpenAI
 
 import jmespath
@@ -88,7 +89,7 @@ def fetch_and_rerank(entities):
         model = 'rerank-english-v2.0',
         query = entities,
         documents = hit_contents,
-        top_n = 3
+        top_n = 6
     )
     
     # the final results
@@ -96,14 +97,20 @@ def fetch_and_rerank(entities):
     print("Reranked matches ("+ collection_name+ "):")   
     for i, hit in enumerate(rerank_hits):                
         orig_result = first_iteration_hits[hit.index]
-        second_iteration_hits.append(
-            first_iteration_hits[hit.index]["content"]
+
+        doc = Document(
+            page_content= first_iteration_hits[hit.index]["content"], 
+            metadata={
+                "page_number": first_iteration_hits[hit.index]["ref"]
+            }
         )
+
+        second_iteration_hits.append(str(doc)) # TODO, inefficient but the StreamlitCallback Handler expects this text structure
+
         print(f'{orig_result["ref"]} (Score: {round(hit.relevance_score, 3)})')                
 
     # squash into single response 
     response_documents.append(' '.join(second_iteration_hits))
-
 
     return ' '.join(response_documents)
 
