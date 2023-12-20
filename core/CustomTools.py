@@ -5,41 +5,54 @@ from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
 
-import cohere
-
 from qdrant_client import QdrantClient
 
-from langchain.tools import BaseTool, StructuredTool, Tool, tool
+from langchain.tools import BaseTool
 from langchain.docstore.document import Document
 from openai import OpenAI
 
-import jmespath
-import json
 import httpx
 import time
 
 from conf.constants import *
 
+from typing import Any    
+    
+import numpy as np
+
+from langchain_community.vectorstores.utils import maximal_marginal_relevance
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import VectorStore
+
 # ---
 
-def query_qdrant(query, top_k=5, collection_name="rhaetor.github.io_components"):
-    openai_client = create_openai_client()
-    qdrant_client = create_qdrant_client()
+def document_from_scored_point(        
+        scored_point: Any,
+        content_payload_key: str,
+        metadata_payload_key: str,
+    ) -> Document:
+        return Document(
+            page_content=scored_point.payload.get(content_payload_key),
+            metadata=scored_point.payload.get(metadata_payload_key) or {},
+        )
 
-    embedded_query = get_embedding(openai_client=openai_client, text=query)
+def query_qdrant(embedding, top_k=5, collection_name="rhaetor.github.io_components"):
     
-    query_results = qdrant_client.search(
+    results = create_qdrant_client().search(
         collection_name=collection_name,
-        query_vector=(embedded_query),
+        query_vector=(embedding),
+        with_payload=True,
+        with_vectors=True,
         limit=top_k,
     )
     
-    return query_results
+    return results
 
-def get_embedding(openai_client, text, model="text-embedding-ada-002"):
+def get_embedding(text, model="text-embedding-ada-002"):
    start = time.time()
    text = text.replace("\n", " ")
-   resp = openai_client.embeddings.create(input = [text], model=model)
+   resp = create_openai_client().embeddings.create(input = [text], model=model)
    print("Embedding ms: ", time.time() - start)
    return resp.data[0].embedding
 
@@ -57,62 +70,50 @@ def create_qdrant_client():
         api_key=QDRANT_KEY,
     )
     return client
-
+    
 def fetch_and_rerank(entities, collections):
-    response_documents = []
-    first_iteration_hits = []
+    
+    # compute the query embedding
+    embedding = get_embedding(text=entities)
 
     # lookup across multiple vector store
-    for collection_name in collections:
-            
-        query_results = query_qdrant(entities, collection_name=collection_name)
-        num_matches = len(query_results)
+    results = []    
+    for name in collections:        
+        intermittent_results = query_qdrant(embedding=embedding, collection_name=name, top_k=15)
+        results.extend(intermittent_results)
+
         
-        print("First glance matches:")
-        for i, article in enumerate(query_results):    
-           print(f'{i + 1}. {article.payload["metadata"]["page_number"]} (Score: {round(article.score, 3)})')
-           first_iteration_hits.append(
-               {
-                   "content": article.payload["page_content"],
-                   "ref": article.payload["metadata"]["page_number"]
-               }
-           )
-
-
-    # apply reranking
-    hit_contents = []
-    for match in first_iteration_hits:                             
-        hit_contents.append(match["content"])            
+    ## The MMR impl used with retriever(search_type='mmr')    
+    embeddings = [result.vector for result in results]
     
-    co = cohere.Client(os.environ['COHERE_KEY'])
-    rerank_hits = co.rerank(
-        model = 'rerank-english-v2.0',
-        query = entities,
-        documents = hit_contents,
-        top_n = 5
-    )
-    
-    # the final results
-    second_iteration_hits = []
-    print("Reranked matches ("+ collection_name+ "):")   
-    for i, hit in enumerate(rerank_hits):                
-        orig_result = first_iteration_hits[hit.index]
-
-        doc = Document(
-            page_content= first_iteration_hits[hit.index]["content"], 
-            metadata={
-                "page_number": first_iteration_hits[hit.index]["ref"]
-            }
+    mmr_selected = maximal_marginal_relevance(
+            np.array(embedding), embeddings, k=5, lambda_mult=0.5
         )
+    
+    mmr_results = [
+        (
+            document_from_scored_point(
+                scored_point=results[i], 
+                content_payload_key="page_content", 
+                metadata_payload_key="metadata"
+            ),
+            results[i].score,
+        )
+        for i in mmr_selected
+    ]
+    
+    response_content = []
+    for i, article in enumerate(mmr_results):    
+        doc = article[0]
+        score = article[1]
+        print(str(round(score, 3)), ": ", doc.metadata["page_number"])
+        response_content.append(doc)
 
-        second_iteration_hits.append(str(doc)) # TODO, inefficient but the StreamlitCallback Handler expects this text structure
+    response_content = [str(d) for d in response_content]
 
-        print(f'{orig_result["ref"]} (Score: {round(hit.relevance_score, 3)})')                
-
-    # squash into single response 
-    response_documents.append(' '.join(second_iteration_hits))
-
-    return ' '.join(response_documents)
+    # squash into single response     
+    return ' '.join(response_content)
+        
 
 class QuarkusReferenceTool(BaseTool):
     name = "search_quarkus_reference"
