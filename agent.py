@@ -51,7 +51,7 @@ def configure_retriever(collection_name):
     
     retriever = qdrant.as_retriever(        
         search_type="mmr",
-        search_kwargs={"fetch_k":15, "k": 5}
+        search_kwargs={"fetch_k":15, "k": 5, "lambda_mult":0.75}
         ) 
         
     return retriever
@@ -94,10 +94,17 @@ tools = [CamelCoreTool(), spring_started_tool, spring_reference, tooling_guide, 
 llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
 message = SystemMessage(
     content=(
-        "You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework."
-        "Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. "
-        "You always request additional information using the functions provided before answering the original question." 
-        "Provide a code examples in Java when it is applicable"       
+        """
+        You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework.
+        Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. 
+        
+        You always request additional information using the functions provided before answering the original question. 
+        Please base your answer only on the search results and nothing else!
+        Very important! Your answer MUST be grounded in the search results provided.
+        Please explain why your answer is grounded in the search results!
+        
+        Provide a code examples in Java when it is applicable.
+        """       
     )
 )
 prompt = OpenAIFunctionsAgent.create_prompt(
