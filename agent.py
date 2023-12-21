@@ -65,7 +65,7 @@ def create_lookup_tool(retriever, name, description):
 
 # tools offering access to explicit knowledge
 tooling_guide = create_lookup_tool(
-    configure_retriever("tooling_guide"),
+    configure_retriever("tooling_guide_2"),
     "search_tooling_guide",
     "Useful when you need to answer questions about tools for developing Camel applications. Input should be a list of tools for developing Camel applications.",
 )
@@ -77,15 +77,15 @@ spring_reference = create_lookup_tool(
 )
 
 spring_started_tool = create_lookup_tool(
-    configure_retriever("spring_get_started"),
+    configure_retriever("spring_get_started_2"),
     "search_spring_getting_started",
-    "Useful when you need to answer questions about setting up Spring Boot projects with Camel. Input should be a a list of terms related to Spring Boot project setup.",
+    "Useful when you need to answer questions about leveraging Spring Boot with Camel. Input should be a a list of terms related to Spring Boot project setup.",
 )
 
 quarkus_started_tool = create_lookup_tool(
-    configure_retriever("quarkus_getting_started"),
+    configure_retriever("quarkus_getting_started_2"),
     "search_quarkus_getting_started",
-    "Useful when you need to answer questions about setting up Quarkus projects with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
+    "Useful when you need to answer questions about leveraging Quarkus with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
 )
 
 tools = [CamelCoreTool(), spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
