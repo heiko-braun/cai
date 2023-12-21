@@ -100,7 +100,7 @@ parser.add_argument('-f', '--file', help='Upsert indivual file', required=False)
 args = parser.parse_args()
 
 # the regex used to extract a reference form the filename
-ID_REF_REGEX = "[0-9]+" # defaults to PDF mode
+ID_REF_REGEX = "\/([^\/]+)$" # defaults to PDF mode
 if(args.mode == "web"):
     ID_REF_REGEX = "_([^_]+)_([^_]+)$"
 
@@ -113,7 +113,8 @@ else:
 
 # sort
 def pagenum(name):
-    return int(re.search("[0-9]+", name)[0])
+    match = re.search("_([^_]+).txt$", name)[1]    
+    return int(match)
 
 if(args.mode == "pdf"):
     filenames.sort(key=pagenum)
