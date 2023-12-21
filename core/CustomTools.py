@@ -123,7 +123,7 @@ class QuarkusReferenceTool(BaseTool):
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Use the tool."""
-        return fetch_and_rerank(query, ["quarkus_reference", "rhaetor.github.io_components"])
+        return fetch_and_rerank(query, ["quarkus_reference_2", "rhaetor.github.io_components_2"])
 
     async def _arun(
         self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
@@ -140,7 +140,7 @@ class CamelCoreTool(BaseTool):
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Use the tool."""
-        return fetch_and_rerank(query, ["rhaetor.github.io", "rhaetor.github.io_components"])
+        return fetch_and_rerank(query, ["rhaetor.github.io_2", "rhaetor.github.io_components_2"])
 
     async def _arun(
         self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
