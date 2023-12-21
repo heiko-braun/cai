@@ -39,21 +39,20 @@ def get_embedding(openai_client, text, model="text-embedding-ada-002"):
 
 PROMPT_TEMPLATE = PromptTemplate.from_template(
         """
-        Extract key pieces of information from the following text. 
-        If a particular piece of information is not present, output \"Not specified\".
+        What are the top 20 entities mentioned in the given context? 
+        Extract any part of the context AS IS that is relevant to answer the question. 
+        At the end, provide a brief summary about the whole context.
+        
+        > Context:
+        >>>
+        {text}
+        >>>
 
-        Use the following format:
-        0. What's the Camel component name                    
-        1. What are relevant technical concepts mentioned
-        3. What thirdparty services or tools are mentioned                
-
-        Don't mention these entities in your response:
+        Exclude these entities in your response:
         - Apache Camel
         - Java 
         - Maven 
-        - Configuring Options
-        
-        Text: \"\"\"{text}\"\"\"
+        - Red Hat
 
         """
     )
@@ -143,7 +142,7 @@ for name in filenames[start:end]:
     if(len(file_content)> threshold):
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size = threshold,
-            chunk_overlap  = 0            
+            chunk_overlap  = 100            
         )
         chunks = text_splitter.split_text(file_content)
 
