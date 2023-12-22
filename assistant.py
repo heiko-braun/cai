@@ -8,6 +8,7 @@ import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from langchain.prompts import PromptTemplate
+from langchain.docstore.document import Document
 
 from conf.constants import *
 
@@ -109,51 +110,60 @@ def fetch_docs(entities):
     else:
         return "No matching file found for "+entities  
 
-def fetch_pdf_pages(entities, feedback):  
-    #feedback.print("Fetching PDF pages for query: " + entities)  
-    
+def fetch_and_rerank(entities, collections, feedback):
     response_documents = []
+    first_iteration_hits = []
 
-    for collection_name in ["fuse_camel_development", "fuse_component_reference"]:
+    # lookup across multiple vector store
+    for collection_name in collections:
             
         query_results = query_qdrant(entities, collection_name=collection_name)
         num_matches = len(query_results)
         
-        # print("First glance matches:")
-        # for i, article in enumerate(query_results):    
-        #    print(f'{i + 1}. {article.payload["filename"]} (Score: {round(article.score, 3)})')
-
-        if num_matches > 0:
-
-            first_iteration_hits = []        
-            for _, article in enumerate(query_results):
-                page_number = article.payload["page_number"]
-                with open(TEXT_DIR+collection_name+"/page_"+str(page_number)+".txt") as f:                
-                    first_iteration_hits.append(f.read())            
-
-            # apply reranking
-            co = cohere.Client(os.environ['COHERE_KEY'])
-            rerank_hits = co.rerank(
-                model = 'rerank-english-v2.0',
-                query = entities,
-                documents = first_iteration_hits,
-                top_n = 3
-            )
-         
-            second_iteration_hits = []
-            feedback.print("Reranked matches ("+ collection_name+ "):")   
-            for i, hit in enumerate(rerank_hits):                
-                orig_result = query_results[hit.index]
-                second_iteration_hits.append(
-                    first_iteration_hits[hit.index]
-                )
-                feedback.print(f'{orig_result.payload["page_number"]} (Score: {round(hit.relevance_score, 3)})')                
-          
-            # return the reanked hits as a single results
-            response_documents.append(' '.join(second_iteration_hits))
         
-        else:
-            print("No matching file found for "+entities)
+        feedback.print("First glance matches ("+collection_name+"):")
+        for i, article in enumerate(query_results):    
+           feedback.print(f'{i + 1}. {article.payload["metadata"]["page_number"]} (Score: {round(article.score, 3)})')
+           first_iteration_hits.append(
+               {
+                   "content": article.payload["page_content"],
+                   "ref": article.payload["metadata"]["page_number"]
+               }
+           )
+
+
+    # apply reranking
+    hit_contents = []
+    for match in first_iteration_hits:                             
+        hit_contents.append(match["content"])            
+    
+    co = cohere.Client(os.environ['COHERE_KEY'])
+    rerank_hits = co.rerank(
+        model = 'rerank-english-v2.0',
+        query = entities,
+        documents = hit_contents,
+        top_n = 5
+    )
+    
+    # the final results
+    second_iteration_hits = []
+    feedback.print("Reranked matches: ") 
+    for i, hit in enumerate(rerank_hits):                
+        orig_result = first_iteration_hits[hit.index]
+
+        doc = Document(
+            page_content= first_iteration_hits[hit.index]["content"], 
+            metadata={
+                "page_number": first_iteration_hits[hit.index]["ref"]
+            }
+        )
+
+        second_iteration_hits.append(str(doc)) # TODO, inefficient but the StreamlitCallback Handler expects this text structure
+
+        feedback.print(f'{orig_result["ref"]} (Score: {round(hit.relevance_score, 3)})')         
+
+    # squash into single response 
+    response_documents.append(' '.join(second_iteration_hits))
 
     return ' '.join(response_documents)
                 
@@ -370,9 +380,13 @@ class Assistant(StateMachine):
                 )
                 continue
 
-            # TODO: Needs a strategy implementation
-            #doc = fetch_docs(self.prompt_text + " | " + keywords)                  
-            doc = fetch_pdf_pages(entities=keywords, feedback=self.feedback)
+            
+            #doc = fetch_pdf_pages(entities=keywords, feedback=self.feedback)
+            doc = fetch_and_rerank(
+                entities=keywords, 
+                collections=["rhaetor.github.io_2", "rhaetor.github.io_components_2"],
+                feedback=self.feedback
+                )
             outputs.append(
                 {
                     "tool_call_id": a["call_id"],
