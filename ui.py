@@ -6,6 +6,8 @@ import time
 from conf.constants import *
 from assistant import *
 
+from langchain.schema import SystemMessage, AIMessage, HumanMessage
+
 # Initialize session state variables for file IDs and chat control
 if "start_chat" not in st.session_state:
     st.session_state.start_chat = False
@@ -41,8 +43,9 @@ assistant = Assistant(st)
 # Only show the chat interface if the chat has been started
 
 # Initialize the model and messages list if not already in session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+starter_message = "How can I help you?"
+if "messages" not in st.session_state or st.button("Clear Thread"):
+    st.session_state["messages"] = [AIMessage(content=starter_message)]
 
 # Display existing messages in the chat
 # for message in st.session_state.messages:
