@@ -26,7 +26,7 @@ from core.CustomTools import QuarkusReferenceTool, CamelCoreTool
 client = Client()
 
 st.set_page_config(
-    page_title="Camel Quickstart Assitant",
+    page_title="Camel Quickstart Assistant",
     page_icon="🦜",
     layout="wide",
     initial_sidebar_state="collapsed",
