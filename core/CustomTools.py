@@ -87,7 +87,7 @@ def fetch_and_rerank(entities, collections):
     embeddings = [result.vector for result in results]
     
     mmr_selected = maximal_marginal_relevance(
-            np.array(embedding), embeddings, k=5, lambda_mult=0.5
+            np.array(embedding), embeddings, k=5, lambda_mult=0.8
         )
     
     mmr_results = [
