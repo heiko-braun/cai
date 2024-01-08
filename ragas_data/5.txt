@@ -1,0 +1,18 @@
+how you can I register a global error handler for the RouteBuilder?
+__###__
+To register a global error handler for the RouteBuilder in Apache Camel, you can use the errorHandler method in the configure method of the RouteBuilder. Here's an example of how to do this in Java DSL:
+
+RouteBuilder builder = new RouteBuilder() {
+    public void configure() {
+        errorHandler(deadLetterChannel("seda:error"));
+
+        // Define your routes here
+    }
+};
+
+In this example, the deadLetterChannel method is used to specify the error handler for the RouteBuilder. This sets up a global error handler that applies to all routes defined within the RouteBuilder.
+
+Additionally, you can also configure route-specific error handlers by using the errorHandler method within a specific route definition.
+
+If you are using Spring-based configuration, you can configure the error handler as a Spring bean and scope it globally, per route, or per policy using the errorHandlerRef attribute.
+

@@ -1,0 +1,15 @@
+How can I test a Camel route using jBang?
+__###__
+To test a Camel route using jBang, you can use the "camel run" command provided by Camel JBang. This command allows you to run Camel routes directly from the command line. Here's an example of how you can use jBang to test a Camel route:
+
+jbang camel@apache/camel run MyCamelRoute.java
+
+In this example, "MyCamelRoute.java" is the file containing your Camel route. You can replace it with the actual file name of your Camel route.
+
+Additionally, you can also run Camel routes directly from the OS clipboard using jBang. This allows you to copy the route code and quickly run it. For example, you can copy the route code to your clipboard and then run the route using the following command:
+
+jbang run clipboard.java
+
+Replace "clipboard.java" with the appropriate file extension based on the content of the clipboard (e.g., java, xml, or yaml).
+
+These commands demonstrate how you can use jBang to test Camel routes directly from the command line or the OS clipboard.

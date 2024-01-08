@@ -1,0 +1,26 @@
+Can you show an example how to use the Rest DSL in Java to build an endpoint that responds to GET requests?
+__###__
+To create a REST endpoint that responds to GET requests using the Rest DSL in Java, you can define the endpoint in a RouteBuilder class. Here's an example of how to do this:
+
+import org.apache.camel.builder.RouteBuilder;
+
+public class MyRouteBuilder extends RouteBuilder {
+    @Override
+    public void configure() throws Exception {
+        rest("/say")
+            .get("/hello").to("direct:hello")
+            .get("/bye").consumes("application/json").to("direct:bye");
+
+        from("direct:hello")
+            .transform().constant("Hello World");
+
+        from("direct:bye")
+            .transform().constant("Bye World");
+    }
+}
+
+In this example, we use the rest() method to define the base path for the REST service, and then use the get() method to define the specific endpoints for GET requests. The to() method is used to route the requests to specific Camel endpoints.
+
+This example demonstrates how to define REST services using the Rest DSL in Java, and how to route requests to specific Camel endpoints based on the HTTP method and content type.
+
+Let me know if you need more information!
