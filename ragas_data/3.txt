@@ -1,0 +1,21 @@
+This is my route
+
+    from("sftp://userName:password@ip:22/<my-folder>?move=.done")
+        .routeId("my-route-1")
+        .<processing-logic>
+
+        
+How to avoid processing the same files incase of multiple instances?
+__###__
+To avoid processing the same files in case of multiple instances, you can use the "Idempotent Consumer" pattern in Apache Camel. The Idempotent Consumer is used to filter out duplicate messages, ensuring that each message is processed only once.
+
+You can use the idempotentConsumer EIP in your route to achieve this. Here's an example of how you can use the idempotentConsumer in your route:
+
+from("sftp://userName:password@ip:22/<my-folder>?move=.done")
+    .routeId("my-route-1")
+    .idempotentConsumer(header("messageId"), MemoryIdempotentRepository.memoryIdempotentRepository(200))
+    .<processing-logic>
+
+In this example, header("messageId") is used to calculate the correlation key for duplicate check, and MemoryIdempotentRepository.memoryIdempotentRepository(200) is used as the idempotent repository. You can replace MemoryIdempotentRepository with other implementations such as CaffeineIdempotentRepository, CassandraIdempotentRepository, RedisIdempotentRepository, etc., based on your requirements.
+
+By using the Idempotent Consumer pattern, you can ensure that duplicate files are filtered out and processed only once, even in the presence of multiple instances of the route.

@@ -1,11 +1,26 @@
-I want to read a local file, create equal chunks and store in AWS S3. Can you show  me how to do that?
+I want to read a local file, create equally sized parts of 50kb. After that each part should be stored separately in AWS S3. Can you show me an example in Java?
 __###__
-To read a local file, create equal chunks, and store them in AWS S3 using Apache Camel, you can use the AWS2-S3 component. Here's an example of how you can achieve this in Java:
+To achieve this, you can use Apache Camel to read a local file, split it into equally sized parts, and then store each part separately in AWS S3. Here's an example of how you can achieve this using Java and Apache Camel:
 
-from("file://inputFolder")
-    .split(body().tokenize("\n")).streaming()
-    .to("aws2-s3://myBucket?accessKey=yourAccessKey&secretKey=yourSecretKey&region=us-west-2");
+import org.apache.camel.builder.RouteBuilder;
 
-In this example, we use the file component to read files from the local directory "inputFolder". We then split the file content into equal chunks and use the aws2-s3 component to store the chunks in the AWS S3 bucket "myBucket" using the provided access key, secret key, and region.
+public class FileSplitterRoute extends RouteBuilder {
+    @Override
+    public void configure() throws Exception {
+        from("file:/path/to/local/directory?noop=true&fileName=yourfile.txt")
+            .split().tokenize("\n").streaming()
+            .aggregate(constant(true), new MyAggregationStrategy())
+                .completionSize(50 * 1024)
+                .to("aws2-s3://your-bucket-name?accessKey=yourAccessKey&secretKey=yourSecretKey");
+    }
+}
 
-This example demonstrates how to read a local file, split it into equal chunks, and store them in AWS S3 using Apache Camel and the AWS2-S3 component.
+In this example:
+
+We use the file component to read a file from a local directory.
+We then split the file into equally sized parts using the split and aggregate EIPs.
+The aggregate EIP is used to aggregate the parts into a single message with a completion size of 50kb.
+Finally, we use the aws2-s3 component to store each part separately in AWS S3.
+Please replace /path/to/local/directory, yourfile.txt, your-bucket-name, yourAccessKey, and yourSecretKey with your actual values.
+
+This example demonstrates how to read a local file, split it into equally sized parts, and store each part separately in AWS S3 using Apache Camel.

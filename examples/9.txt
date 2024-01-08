@@ -1,1 +1,1 @@
-I want to read a local file, create equal chunks and store in AWS S3. Can you show  me how to do that?
+I want to read a local file, create equally sized parts of 50kb. After that each part should be stored separately in AWS S3. Can you show me an example in Java?
