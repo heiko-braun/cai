@@ -8,10 +8,6 @@ from langchain.chat_models import ChatOpenAI
 from langchain.schema import SystemMessage
 from langchain.prompts import MessagesPlaceholder
 
-from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
-    AgentTokenBufferMemory,
-)
-
 from langchain.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from conf.constants import *
@@ -114,5 +110,3 @@ agent_executor = AgentExecutor(
     max_iterations=5,
     early_stopping_method="generate",
 )
-
-agent_memory = AgentTokenBufferMemory(llm=agent_llm)

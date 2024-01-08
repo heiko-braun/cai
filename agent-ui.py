@@ -5,7 +5,11 @@ from core.MyStreamlitCallbackHandler import MyStreamlitCallbackHandler
 
 from langchain.schema import AIMessage, HumanMessage
 
-from core.agent import agent_executor, agent_llm, agent_memory
+from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
+    AgentTokenBufferMemory,
+)
+
+from core.agent import agent_executor, agent_llm
 
 from conf.constants import PG_URL
 
@@ -65,7 +69,7 @@ def send_feedback(run_id, score, prompt, response):
         if conn is not None:
             conn.close()    
 
-
+agent_memory = AgentTokenBufferMemory(llm=agent_llm)
 for msg in st.session_state.messages:
     
     # [hb] don't know how, but empty message sneak in an occupy the UI
@@ -99,12 +103,12 @@ if prompt := st.chat_input(placeholder=starter_message):
         st.session_state["messages"] = agent_memory.buffer
         run_id = response["__run"].run_id
 
-        # col_blank, col_text, col1, col2 = st.columns([10, 2, 1, 1])
-        # with col_text:
-        #     st.text("Feedback:")
+        col_blank, col_text, col1, col2 = st.columns([10, 2, 1, 1])
+        with col_text:
+            st.text("Feedback:")
 
-        # with col1:
-        #     st.button("👍", on_click=send_feedback, args=(run_id, 1, prompt, response["output"]))
+        with col1:
+            st.button("👍", on_click=send_feedback, args=(run_id, 1, prompt, response["output"]))
 
-        # with col2:
-        #     st.button("👎", on_click=send_feedback, args=(run_id, 0, prompt, response["output"]))
+        with col2:
+            st.button("👎", on_click=send_feedback, args=(run_id, 0, prompt, response["output"]))
