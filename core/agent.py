@@ -1,0 +1,118 @@
+
+__all__ = ['agent_executor', 'agent_llm', 'agent_memory'] 
+
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.agents import OpenAIFunctionsAgent, AgentExecutor
+
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import SystemMessage
+from langchain.prompts import MessagesPlaceholder
+
+from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
+    AgentTokenBufferMemory,
+)
+
+from langchain.vectorstores import Qdrant
+from qdrant_client import QdrantClient
+from conf.constants import *
+
+
+from langchain.tools import Tool
+
+
+from core.CustomTools import QuarkusReferenceTool, CamelCoreTool
+
+
+def create_qdrant_client(): 
+    client = QdrantClient(
+       QDRANT_URL,
+        api_key=QDRANT_KEY,
+    )
+    return client
+
+def configure_retriever(collection_name):
+    
+    qdrant = Qdrant(
+        client=create_qdrant_client(), 
+        collection_name=collection_name, 
+        embeddings=OpenAIEmbeddings())
+    
+    retriever = qdrant.as_retriever(        
+        search_type="mmr",
+        search_kwargs={"fetch_k":15, "k": 5, "lambda_mult":0.75}
+        ) 
+        
+    return retriever
+
+def create_lookup_tool(retriever, name, description):
+    return Tool(
+        name=name,
+        description=description,
+        func=retriever.get_relevant_documents                       
+    )
+
+# tools offering access to explicit knowledge
+tooling_guide = create_lookup_tool(
+    configure_retriever("tooling_guide_2"),
+    "search_tooling_guide",
+    "Useful when you need to answer questions about tools for developing Camel applications. Input should be a list of tools for developing Camel applications.",
+)
+
+spring_reference = create_lookup_tool(
+    configure_retriever("spring_reference"),
+    "search_spring_reference",
+    "Useful when you need to answer questions about Camel Components used with Spring Boot. Input should be a list of Camel components to integrate third-party systems.",
+)
+
+spring_started_tool = create_lookup_tool(
+    configure_retriever("spring_get_started_2"),
+    "search_spring_getting_started",
+    "Useful when you need to answer questions about leveraging Spring Boot with Camel. Input should be a a list of terms related to Spring Boot project setup.",
+)
+
+quarkus_started_tool = create_lookup_tool(
+    configure_retriever("quarkus_getting_started_2"),
+    "search_quarkus_getting_started",
+    "Useful when you need to answer questions about leveraging Quarkus with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
+)
+
+tools = [CamelCoreTool(), spring_started_tool, spring_reference, tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
+
+# LLM instructions
+agent_llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
+
+message = SystemMessage(
+    content=(
+        """
+        You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework.
+        Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. 
+        
+        You always request additional information using the functions provided before answering the original question. 
+        Please base your answer only on the search results and nothing else!
+        Very important! Your answer MUST be grounded in the search results provided.
+        Please explain why your answer is grounded in the search results!
+        
+        Provide a code examples in Java when it is applicable.
+        """       
+    )
+)
+prompt = OpenAIFunctionsAgent.create_prompt(
+    system_message=message,
+    extra_prompt_messages=[MessagesPlaceholder(variable_name="history")],
+)
+agent = OpenAIFunctionsAgent(
+     llm=agent_llm, 
+     tools=tools, 
+     prompt=prompt
+     ) 
+
+agent_executor = AgentExecutor(
+    agent=agent,
+    tools=tools,
+    verbose=False,
+    return_intermediate_steps=True,
+    max_iterations=5,
+    early_stopping_method="generate",
+)
+
+agent_memory = AgentTokenBufferMemory(llm=agent_llm)

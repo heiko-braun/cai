@@ -21,3 +21,5 @@ faiss-cpu
 psycopg2-binary
 pydantic
 matplotlib
+ragas
+datasets

@@ -58,7 +58,7 @@ Once the process completes, you should have a meta data and vector embeddings in
 ## Using the assistant
 
 ```
-streamlit run agent.py
+streamlit run agent-ui.py
 ```
 
 [...]
