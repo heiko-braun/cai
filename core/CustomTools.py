@@ -102,17 +102,14 @@ def fetch_and_rerank(entities, collections):
         for i in mmr_selected
     ]
     
-    response_content = []
+    response_documents = []
     for i, article in enumerate(mmr_results):    
         doc = article[0]
-        score = article[1]
+        score = article[1]        
         print(str(round(score, 3)), ": ", doc.metadata["page_number"])
-        response_content.append(doc)
-
-    response_content = [str(d) for d in response_content]
-
-    # squash into single response     
-    return ' '.join(response_content)
+        response_documents.append(doc)
+    
+    return response_documents
         
 
 class QuarkusReferenceTool(BaseTool):
@@ -123,7 +120,10 @@ class QuarkusReferenceTool(BaseTool):
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Use the tool."""
-        return fetch_and_rerank(query, ["quarkus_reference_2", "rhaetor.github.io_components_2"])
+        response_content = []
+        docs = fetch_and_rerank(query, ["quarkus_reference_2", "rhaetor.github.io_components_2"])
+        response_content = [str(d) for d in docs]
+        return ' '.join(response_content)
 
     async def _arun(
         self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
@@ -140,7 +140,10 @@ class CamelCoreTool(BaseTool):
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Use the tool."""
-        return fetch_and_rerank(query, ["rhaetor.github.io_2", "rhaetor.github.io_components_2"])
+        response_content = []
+        docs = fetch_and_rerank(query, ["rhaetor.github.io_2", "rhaetor.github.io_components_2"])
+        response_content = [str(d) for d in docs]
+        return ' '.join(response_content)
 
     async def _arun(
         self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
