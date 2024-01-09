@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Optional, Type, Any
 
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForToolRun,
@@ -15,8 +15,6 @@ import httpx
 import time
 
 from conf.constants import *
-
-from typing import Any    
     
 import numpy as np
 

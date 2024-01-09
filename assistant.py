@@ -1,4 +1,7 @@
 from openai import OpenAI
+
+from typing import Optional, Type, Any
+
 from util.utils import show_json, as_json
 import time
 import jmespath
@@ -6,9 +9,9 @@ import json
 import httpx
 
 from qdrant_client import QdrantClient
-from qdrant_client.http import models
 from langchain.prompts import PromptTemplate
 from langchain.docstore.document import Document
+from langchain_community.vectorstores.utils import maximal_marginal_relevance
 
 from conf.constants import *
 
@@ -23,6 +26,7 @@ from statemachine import StateMachine
 
 import argparse
 import cohere
+import numpy as np
 
 import streamlit as st
 from abc import ABC, abstractmethod
@@ -110,69 +114,60 @@ def fetch_docs(entities):
     else:
         return "No matching file found for "+entities  
 
-def fetch_and_rerank(entities, collections, feedback):
-    response_documents = []
-    first_iteration_hits = []
-
-    # lookup across multiple vector store
-    for collection_name in collections:
-            
-        query_results = query_qdrant(entities, collection_name=collection_name)
-        num_matches = len(query_results)
-        
-        
-        feedback.print("First glance matches ("+collection_name+"):")
-        for i, article in enumerate(query_results):    
-           feedback.print(f'{i + 1}. {article.payload["metadata"]["page_number"]} (Score: {round(article.score, 3)})')
-           first_iteration_hits.append(
-               {
-                   "content": article.payload["page_content"],
-                   "ref": article.payload["metadata"]["page_number"]
-               }
-           )
-
-
-    # apply reranking
-    hit_contents = []
-    for match in first_iteration_hits:                             
-        hit_contents.append(match["content"])            
-    
-    co = cohere.Client(os.environ['COHERE_KEY'])
-    rerank_hits = co.rerank(
-        model = 'rerank-english-v2.0',
-        query = entities,
-        documents = hit_contents,
-        top_n = 5
-    )
-    
-    # the final results
-    second_iteration_hits = []
-    feedback.print("Reranked matches: ") 
-    for i, hit in enumerate(rerank_hits):                
-        orig_result = first_iteration_hits[hit.index]
-
-        doc = Document(
-            page_content= first_iteration_hits[hit.index]["content"], 
-            metadata={
-                "page_number": first_iteration_hits[hit.index]["ref"]
-            }
+def document_from_scored_point(        
+        scored_point: Any,
+        content_payload_key: str,
+        metadata_payload_key: str,
+    ) -> Document:
+        return Document(
+            page_content=scored_point.payload.get(content_payload_key),
+            metadata=scored_point.payload.get(metadata_payload_key) or {},
         )
 
-        second_iteration_hits.append(str(doc)) # TODO, inefficient but the StreamlitCallback Handler expects this text structure
-
-        feedback.print(f'{orig_result["ref"]} (Score: {round(hit.relevance_score, 3)})')         
-
-    # squash into single response 
-    response_documents.append(' '.join(second_iteration_hits))
-
-    return ' '.join(response_documents)
-                
-def query_qdrant(query, top_k=5, collection_name="fuse_camel_development"):
-    openai_client = create_openai_client()
-    qdrant_client = create_qdrant_client()
-
-    embedded_query = get_embedding(openai_client=openai_client, text=query)
+def fetch_and_rerank(entities, collections, feedback):
     
+    # compute the query embedding    
+    embedding = get_embedding(text=entities)
+
+    # lookup across multiple vector store
+    results = []    
+    for name in collections:        
+        intermittent_results = query_qdrant(embedding=embedding, collection_name=name, top_k=15)
+        results.extend(intermittent_results)
+    
+    ## The MMR impl used with retriever(search_type='mmr')    
+    embeddings = [result.vector for result in results]
+
+    mmr_selected = maximal_marginal_relevance(
+            np.array(embedding), embeddings, k=5, lambda_mult=0.8
+        )
+    
+    mmr_results = [
+        (
+            document_from_scored_point(
+                scored_point=results[i], 
+                content_payload_key="page_content", 
+                metadata_payload_key="metadata"
+            ),
+            results[i].score,
+        )
+        for i in mmr_selected
+    ]
+    
+    response_documents = []
+    for i, article in enumerate(mmr_results):    
+        doc = article[0]
+        score = article[1]        
+        feedback.print(str(round(score, 3))+ ": "+ doc.metadata["page_number"])
+        response_documents.append(doc)
+    
+    return response_documents
+
+def query_qdrant(query, collection_name, top_k=5):
+    
+    embedded_query = get_embedding(text=query)
+    
+    qdrant_client = create_qdrant_client()
     query_results = qdrant_client.search(
         collection_name=collection_name,
         query_vector=(embedded_query),
@@ -181,11 +176,25 @@ def query_qdrant(query, top_k=5, collection_name="fuse_camel_development"):
     
     return query_results
 
+def query_qdrant(embedding, collection_name, top_k=5):
+    
+    qdrant_client = create_qdrant_client()
+
+    results = create_qdrant_client().search(
+        collection_name=collection_name,
+        query_vector=(embedding),
+        with_payload=True,
+        with_vectors=True,
+        limit=top_k,
+    )
+    
+    return results
+
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-def get_embedding(openai_client, text, model="text-embedding-ada-002"):
+def get_embedding(text, model="text-embedding-ada-002"):
    start = time.time()
    text = text.replace("\n", " ")
-   resp = openai_client.embeddings.create(input = [text], model=model)
+   resp = create_openai_client().embeddings.create(input = [text], model=model)
    print("Embedding ms: ", time.time() - start)
    return resp.data[0].embedding
 
@@ -367,9 +376,7 @@ class Assistant(StateMachine):
             self.feedback.print("Keywords: " + ' | '.join(entity_args)       )
  
             keywords = ' '.join(entity_args)
-            # it often includes camel itself. remove it
-            keywords = keywords.replace('Apache', '').replace('Camel', '')
-
+            
             # we may end up with no keywrods at all
             if(len(keywords)==0 or keywords.isspace()):
                 outputs.append(
@@ -382,15 +389,19 @@ class Assistant(StateMachine):
 
             
             #doc = fetch_pdf_pages(entities=keywords, feedback=self.feedback)
-            doc = fetch_and_rerank(
+            docs = fetch_and_rerank(
                 entities=keywords, 
                 collections=["rhaetor.github.io_2", "rhaetor.github.io_components_2"],
                 feedback=self.feedback
                 )
+            
+            response_content = []
+            response_content = [str(d.page_content) for d in docs]
+            
             outputs.append(
                 {
                     "tool_call_id": a["call_id"],
-                    "output": "'"+doc+"'"
+                    "output": "'"+(' '.join(response_content))+"'"
                 }
             )
         
