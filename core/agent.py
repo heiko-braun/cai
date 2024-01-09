@@ -54,17 +54,17 @@ tooling_guide = create_lookup_tool(
     "Useful when you need to answer questions about tools for developing Camel applications. Input should be a list of tools for developing Camel applications.",
 )
 
-# spring_reference = create_lookup_tool(
-#     configure_retriever("spring_reference"),
-#     "search_spring_reference",
-#     "Useful when you need to answer questions about Camel Components used with Spring Boot. Input should be a list of Camel components to integrate third-party systems.",
-# )
+spring_reference = create_lookup_tool(
+    configure_retriever("spring_reference"),
+    "search_spring_reference",
+    "Useful when you need to answer questions about Camel Components used within a Spring Boot Application. Input should be a list of Camel components to integrate third-party systems.",
+)
 
-# spring_started_tool = create_lookup_tool(
-#     configure_retriever("spring_get_started_2"),
-#     "search_spring_getting_started",
-#     "Useful when you need to answer questions about leveraging Spring Boot with Camel. Input should be a a list of terms related to Spring Boot project setup.",
-# )
+spring_started_tool = create_lookup_tool(
+    configure_retriever("spring_get_started_2"),
+    "search_spring_getting_started",
+    "Useful when you need to answer questions about leveraging Spring Boot with Camel. Input should be a a list of terms related to Spring Boot project setup.",
+)
 
 quarkus_started_tool = create_lookup_tool(
     configure_retriever("quarkus_getting_started_2"),
@@ -72,7 +72,7 @@ quarkus_started_tool = create_lookup_tool(
     "Useful when you need to answer questions about leveraging Quarkus with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
 )
 
-tools = [CamelCoreTool(), tooling_guide, QuarkusReferenceTool(), quarkus_started_tool]
+tools = [CamelCoreTool(), tooling_guide, QuarkusReferenceTool(), quarkus_started_tool, spring_reference, spring_started_tool]
 
 # LLM instructions
 agent_llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
