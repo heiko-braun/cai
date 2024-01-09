@@ -346,12 +346,13 @@ class Assistant(StateMachine):
         self.feedback.print("New Thread: " + str(self.thread.id)) 
 
         # Add initial message
-        improved_question = rewrite_question(openai_client = self.openai_client, text=text)
-        print("Improved question: \n", improved_question)
+        #improved_question = rewrite_question(openai_client = self.openai_client, text=text)
+        #print("Improved question: \n", improved_question)
+        
         message = self.openai_client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
-            content=improved_question,
+            content=text,
         )
 
         # create a run
