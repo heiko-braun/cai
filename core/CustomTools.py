@@ -112,7 +112,7 @@ def fetch_and_rerank(entities, collections):
 
 class QuarkusReferenceTool(BaseTool):
     name = "search_quarkus_reference"
-    description = "Useful when you need to answer questions about Camel Components used with Camel Quarkus. Input should be a list of camel components or the names of third-party systems."
+    description = "Useful when you need to answer questions about specific Camel Components used with Camel Quarkus. Input should be a list of 5-8 keywords from the original question"
 
     def _run(
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
@@ -132,7 +132,7 @@ class QuarkusReferenceTool(BaseTool):
 
 class CamelCoreTool(BaseTool):
     name = "search_camel_core"
-    description = "Useful when you need to answer questions about enterprise integration patterns, languages or data formats in Camel, as well as the framework in general. Input should be a list of terms related to the core Camel framework"
+    description = "Useful when you need to answer questions about enterprise integration patterns, languages or data formats in Camel, as well as the framework in general. Input should be a list of 5-8 keywords from the original question"
 
     def _run(
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None

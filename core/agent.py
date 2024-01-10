@@ -51,25 +51,25 @@ def create_lookup_tool(retriever, name, description):
 tooling_guide = create_lookup_tool(
     configure_retriever("tooling_guide_2"),
     "search_tooling_guide",
-    "Useful when you need to answer questions about tools for developing Camel applications. Input should be a list of tools for developing Camel applications.",
+    "Useful when you need to answer questions about tools (i.e. jbang, command line, maven plugins, vscode) for developing Camel applications. Input should be a list of 5-8 keywords from the original question",
 )
 
 spring_reference = create_lookup_tool(
     configure_retriever("spring_reference_2"),
     "search_spring_reference",
-    "Useful when you need to answer questions about Camel Components used within a Spring Boot Application. Input should be a list of Camel components to integrate third-party systems.",
+    "Useful when you need to answer questions about specific Camel Components used within a Spring Boot Application. Input should be a list of 5-8 keywords from the original question",
 )
 
 spring_started_tool = create_lookup_tool(
     configure_retriever("spring_get_started_2"),
     "search_spring_getting_started",
-    "Useful when you need to answer questions about leveraging Spring Boot with Camel. Input should be a a list of terms related to Spring Boot project setup.",
+    "Useful when you need to answer questions about creating projects using Spring Boot and Camel. Input should be a list of 5-8 keywords from the original question",
 )
 
 quarkus_started_tool = create_lookup_tool(
     configure_retriever("quarkus_getting_started_2"),
     "search_quarkus_getting_started",
-    "Useful when you need to answer questions about leveraging Quarkus with Camel. Input should be a list of terms related to Camel Quarkus project setup.",
+    "Useful when you need to answer questions about creating projects with Quarkus and Camel. Input should be a list of 5-8 keywords from the original question",
 )
 
 tools = [CamelCoreTool(), tooling_guide, QuarkusReferenceTool(), quarkus_started_tool, spring_reference, spring_started_tool]
@@ -82,7 +82,8 @@ message = SystemMessage(
         """
         You are an assistant helping software developers create integrations with third-party systems using the Apache Camel framework.
         Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel. 
-        
+        Unless otherwise explicitly stated, it is probably fair to assume that the user intends to build applications Camel and Spring Boot. 
+
         You always request additional information using the functions provided before answering the original question. 
         Please base your answer only on the search results and nothing else!
         Very important! Your answer MUST be grounded in the search results provided.
