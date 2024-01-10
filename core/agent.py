@@ -55,7 +55,7 @@ tooling_guide = create_lookup_tool(
 )
 
 spring_reference = create_lookup_tool(
-    configure_retriever("spring_reference"),
+    configure_retriever("spring_reference_2"),
     "search_spring_reference",
     "Useful when you need to answer questions about Camel Components used within a Spring Boot Application. Input should be a list of Camel components to integrate third-party systems.",
 )

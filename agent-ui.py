@@ -9,6 +9,9 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
 
+from core.costs import TokenCostProcess, CostCalcAsyncHandler
+
+
 from core.agent import agent_executor, agent_llm
 
 from conf.constants import PG_URL
@@ -92,13 +95,18 @@ if prompt := st.chat_input(placeholder=starter_message):
             expand_new_thoughts=False,
             max_thought_containers=4            
             )
+
+        token_cost_process = TokenCostProcess()
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
-            callbacks=[st_callback],
+            callbacks=[st_callback, CostCalcAsyncHandler( "gpt-3.5-turbo-1106", token_cost_process )],
             include_run_info=True,
         )
+        print(token_cost_process.get_cost_summary())
+
         st.session_state.messages.append(AIMessage(content=response["output"]))
         st.write(response["output"])
+        st.caption("Total Tokens: " + str(token_cost_process.get_total_tokens()))
         agent_memory.save_context({"input": prompt}, response)
         st.session_state["messages"] = agent_memory.buffer
         run_id = response["__run"].run_id
