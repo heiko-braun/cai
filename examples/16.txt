@@ -1,0 +1,2 @@
+I need to read emails from an IMAP server. Each message has attachements that I need to store in a local directory. Can you show me an example how to that with Spring Boot?
+
