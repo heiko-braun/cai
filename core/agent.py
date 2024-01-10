@@ -35,7 +35,7 @@ def configure_retriever(collection_name):
     
     retriever = qdrant.as_retriever(        
         search_type="mmr",
-        search_kwargs={"fetch_k":15, "k": 5, "lambda_mult":0.8}
+        search_kwargs={"fetch_k":15, "k": 6, "lambda_mult":0.85}
         ) 
         
     return retriever
@@ -80,7 +80,7 @@ agent_llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106"
 message = SystemMessage(
     content=(
         """
-        You are an assistant helping software developers develop applications using the Apache Camel framework. The framework is used to intergate systems.
+        You are an assistant helping software developers develop applications using the Apache Camel framework. The framework is used to integrate systems.
         Unless otherwise explicitly stated, it is probably fair to assume that questions are about Apache Camel.         
 
         You always request additional information using the functions provided before answering the original question.        
