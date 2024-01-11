@@ -107,7 +107,7 @@ if prompt := st.chat_input(placeholder=starter_message):
         st.session_state.messages.append(AIMessage(content=response["output"]))
         st.write(response["output"])
         st.caption("Total Tokens: " + str(token_cost_process.get_total_tokens()))
-        st.caption("Costs USD: " + str(token_cost_process.get_total_costs()))
+        st.caption("Costs USD: " + format(token_cost_process.get_total_costs(), '.5f'))
         agent_memory.save_context({"input": prompt}, response)
         st.session_state["messages"] = agent_memory.buffer
         run_id = response["__run"].run_id
