@@ -92,14 +92,14 @@ if prompt := st.chat_input(placeholder=starter_message):
         st_callback = MyStreamlitCallbackHandler(
             parent_container=st.container(),
             collapse_completed_thoughts=True,
-            expand_new_thoughts=False,
+            expand_new_thoughts=True,
             max_thought_containers=4            
             )
 
         token_cost_process = TokenCostProcess()
         response = agent_executor(
             {"input": prompt, "history": st.session_state.messages},
-            callbacks=[st_callback, CostCalcAsyncHandler( "gpt-3.5-turbo-1106", token_cost_process )],
+            callbacks=[st_callback, CostCalcAsyncHandler( token_cost_process )],
             include_run_info=True,
         )
         print(token_cost_process.get_cost_summary())
@@ -107,6 +107,7 @@ if prompt := st.chat_input(placeholder=starter_message):
         st.session_state.messages.append(AIMessage(content=response["output"]))
         st.write(response["output"])
         st.caption("Total Tokens: " + str(token_cost_process.get_total_tokens()))
+        st.caption("Costs USD: " + str(token_cost_process.get_total_costs()))
         agent_memory.save_context({"input": prompt}, response)
         st.session_state["messages"] = agent_memory.buffer
         run_id = response["__run"].run_id

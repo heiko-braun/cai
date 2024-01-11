@@ -11,7 +11,7 @@ import tiktoken
 
 MODEL_COST_PER_1K_TOKENS = {        
     "prompt": 0.001,       
-    "completion": 0.002,
+    "completion": 0.003,
 }
 
 
@@ -66,8 +66,8 @@ class CostCalcAsyncHandler(AsyncCallbackHandler):
     websocketaction: str = "appendtext"
     token_cost_process: TokenCostProcess
 
-    def __init__( self, model, token_cost_process ):
-       self.model = "gpt-3.5-turbo-1106"
+    def __init__( self, token_cost_process ):
+       self.model = "gpt-4-1106-preview"
        self.token_cost_process = token_cost_process
 
     def on_llm_start( self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:

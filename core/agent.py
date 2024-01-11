@@ -75,7 +75,7 @@ quarkus_started_tool = create_lookup_tool(
 tools = [CamelCoreTool(), tooling_guide, QuarkusReferenceTool(), quarkus_started_tool, spring_reference, spring_started_tool]
 
 # LLM instructions
-agent_llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-3.5-turbo-1106")
+agent_llm = ChatOpenAI(temperature=0, streaming=True, model="gpt-4-1106-preview")
 
 message = SystemMessage(
     content=(
