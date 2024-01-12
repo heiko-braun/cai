@@ -149,8 +149,10 @@ class Conversation(StateMachine):
         slack_response = self.client.chat_postMessage(
             channel=self.channel, 
             thread_ts=self.thread_ts,
-            text=f"{response_content}")       
-
+            text=f"{response_content}",
+            mrkdwn=True
+            )
+               
         self.feedback.set_visible(False)
 
     def on_exit_answered(self, text=None):
