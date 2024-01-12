@@ -14,7 +14,7 @@ from statemachine import StateMachine
 # --
 
 # the time in seconds, after which a conversation will be retried if inactive
-CONVERSATION_EXPIY_TIME=60
+CONVERSATION_EXPIRY_TIME=120
 
 class StatusStrategy(ABC):
     @abstractmethod
@@ -65,7 +65,7 @@ class SlackStatus(StatusStrategy):
             channel=self.channel, 
             thread_ts=self.thread_ts,
             blocks=blocks,
-            text=""
+            text=tagline
             )
 
 class Conversation(StateMachine):
@@ -112,14 +112,13 @@ class Conversation(StateMachine):
         super().__init__()
 
     def is_expired(self):
-        return self.last_activity < datetime.datetime.now()-datetime.timedelta(seconds=CONVERSATION_EXPIY_TIME)
+        return self.last_activity < datetime.datetime.now()-datetime.timedelta(seconds=CONVERSATION_EXPIRY_TIME)
      
     def on_enter_greeting(self):            
             # mimic the first LLM response to get things started
             self.response_handle = {
                 "output": "How can I help you?"
-            }
-            self.feedback.print("New Thread: " + str(self.thread_ts)) 
+            }            
                                 
     # starting a thinking loop    
     def on_enter_running(self):
