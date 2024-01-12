@@ -11,6 +11,12 @@ from abc import ABC, abstractmethod
 from statemachine import State
 from statemachine import StateMachine
 
+from langchain.callbacks.base import AsyncCallbackHandler
+from langchain.schema import LLMResult
+from langchain_core.messages import BaseMessage
+from uuid import UUID
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, TypeVar, Union
+
 # --
 
 # the time in seconds, after which a conversation will be retried if inactive
@@ -38,11 +44,32 @@ class SlackStatus(StatusStrategy):
         super().__init__()
 
     def print(self, message):
+
+        blocks= [
+            {
+                "type": "context",
+                "elements": [
+                    # {
+					#     "type": "image",
+					#     "image_url": "https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-medium/1f538@2x.png",
+					#     "alt_text": "bot"
+				    # },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*"+message+"*"
+                    }
+                ]
+            }
+	    ]
+         
         slack_response = self.client.chat_postMessage(
             channel=self.channel, 
             thread_ts=self.thread_ts,
+            blocks=blocks,
             text=f"{message}"
             )
+        
+        print(slack_response)
 
     def set_visible(self, is_visible):
         pass  
@@ -53,6 +80,11 @@ class SlackStatus(StatusStrategy):
             {
                 "type": "context",
                 "elements": [
+                    # {
+					#     "type": "image",
+					#     "image_url": "https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-medium/1f538@2x.png",
+					#     "alt_text": "bot"
+				    # },
                     {
                         "type": "mrkdwn",
                         "text": "*"+tagline+"*"
@@ -90,7 +122,7 @@ class Conversation(StateMachine):
         self.last_activity = datetime.datetime.now()
         self.client = slack_client
         self.feedback = SlackStatus(slack_client=slack_client, channel=channel, thread_ts=thread_ts)
-
+        self.callback_handler = SlackAsyncHandler(feedback=self.feedback)
         # the slack thread representing this conversation
         self.channel = channel
         self.thread_ts = thread_ts
@@ -131,7 +163,7 @@ class Conversation(StateMachine):
         # request chat completion
         self.response_handle = self.agent(
             {"input": self.prompt_text, "history": self.memory.buffer},
-            callbacks=[],
+            callbacks=[self.callback_handler],
             include_run_info=True,
         )
 
@@ -165,3 +197,62 @@ class Conversation(StateMachine):
     def on_enter_retired(self):
         self.feedback.set_tagline("This conversation is retired and cannot be activated anymore.")  
         
+class SlackAsyncHandler(AsyncCallbackHandler):
+        
+    websocketaction: str = "appendtext"
+    
+    def __init__( self, feedback):
+        self.feedback = feedback                
+    
+    def on_llm_start( self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:
+       print("llm start")
+       pass
+
+    async def on_llm_new_token(self, token: str, **kwargs) -> None:
+      pass
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+      print("llm end")
+      pass
+
+    async def on_tool_start(
+        self,
+        serialized: Dict[str, Any],
+        input_str: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run when tool starts running."""
+        tool_name = serialized["name"]
+        self.feedback.print(tool_name + ": " + input_str)                
+
+    async def on_tool_end(
+        self,
+        output: str,
+        color: Optional[str] = None,
+        observation_prefix: Optional[str] = None,
+        llm_prefix: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        print("tool end")
+        pass
+        
+    async def on_chat_model_start(
+        self,
+        serialized: Dict[str, Any],
+        messages: List[List[BaseMessage]],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Run when a chat model starts running."""
+        print("chat model start")
+        
+     
