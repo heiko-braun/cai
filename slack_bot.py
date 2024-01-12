@@ -2,6 +2,10 @@ import os
 import signal
 import sys
 import time
+import threading
+
+import datetime as dt
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
@@ -16,10 +20,12 @@ from core.slack import Conversation
 app = App(token=os.environ['SLACK_BOT_TOKEN']) 
 client = WebClient(os.environ['SLACK_BOT_TOKEN'])
 socket = SocketModeHandler(app, os.environ['SLACK_APP_TOKEN'])
+scheduler = BackgroundScheduler()
 
 active_conversations = []
+conversation_lock = threading.Lock()
 
-# makre sure conversation are retried when bot stops
+# make sure conversation are retried when bot stops
 def graceful_shutdown(signum, frame):    
     print("Shutdown bot ...")
 
@@ -27,18 +33,34 @@ def graceful_shutdown(signum, frame):
     [ref["conversation"].retire() for ref in active_conversations]    
     time.sleep(3)
 
+    # stop the scheduler
+    scheduler.shutdown(wait=False)
+
+    # stop the listener
     socket.disconnect()
     socket.close()
+
     sys.exit(0)
 
 def find_conversation(thread_ts):
-
-    for ref in active_conversations:
-        if(ref["id"]==thread_ts):
-            return ref["conversation"]
-        else:
-            return None
-            
+    with conversation_lock:
+        for ref in active_conversations:
+            if(ref["id"]==thread_ts):
+                return ref["conversation"]
+            else:
+                return None
+        
+def retire_inactive_conversation():
+    with conversation_lock:        
+        for ref in active_conversations:
+            conversation = ref["conversation"]
+            if(conversation.is_expired()):
+                if(conversation.current_state!='answered'):            
+                    conversation.retire()
+                    active_conversations.remove(ref)
+                else:
+                    print("Conversation is still active, keep for next cycle: ", str(conversation))    
+                    
 # This gets activated when the bot is tagged in a channel    
 # it will start a new thread that will hold the conversation
 @app.event("app_mention")
@@ -56,7 +78,7 @@ def handle_message_events(body, logger):
         
         response_channel = body["event"]["channel"]
         response_thread = body["event"]["event_ts"]
-
+        
         # register new conversation        
         conversation = Conversation(
             slack_client=client, 
@@ -100,9 +122,18 @@ def handle_message_events(event, say):
         # outside thread we ingore messages
         pass        
 
+
 if __name__ == "__main__":
     
     signal.signal(signal.SIGINT, graceful_shutdown)
     signal.signal(signal.SIGTERM, graceful_shutdown)
 
+    # scheduler reaper
+    scheduler.add_job(retire_inactive_conversation, 'interval', seconds=5, id='retirement_job')
+    scheduler.start()
+
+    # start listening for messages
     socket.start()
+    
+    
+    

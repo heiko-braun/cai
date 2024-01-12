@@ -5,11 +5,16 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
 
+import datetime
+
 from abc import ABC, abstractmethod
 from statemachine import State
 from statemachine import StateMachine
 
 # --
+
+# the time in seconds, after which a conversation will be retried if inactive
+CONVERSATION_EXPIY_TIME=60
 
 class StatusStrategy(ABC):
     @abstractmethod
@@ -68,6 +73,7 @@ class Conversation(StateMachine):
     
     def __init__(self, slack_client, channel, thread_ts):
         
+        self.last_activity = datetime.datetime.now()
         self.client = slack_client
         self.feedback = SlackStatus(slack_client=slack_client, channel=channel, thread_ts=thread_ts)
 
@@ -91,6 +97,9 @@ class Conversation(StateMachine):
 
         super().__init__()
 
+    def is_expired(self):
+        return self.last_activity < datetime.datetime.now()-datetime.timedelta(seconds=CONVERSATION_EXPIY_TIME)
+     
     def on_enter_greeting(self):            
             # mimic the first LLM response to get things started
             self.response_handle = {
@@ -103,6 +112,7 @@ class Conversation(StateMachine):
 
         print("running ..")
 
+        self.last_activity = datetime.datetime.now()
         self.feedback.set_tagline("Thinking ...")    
         
         # request chat completion
@@ -126,8 +136,7 @@ class Conversation(StateMachine):
         slack_response = self.client.chat_postMessage(
             channel=self.channel, 
             thread_ts=self.thread_ts,
-            text=f"{response_content}")
-       
+            text=f"{response_content}")       
 
         self.feedback.set_visible(False)
 
