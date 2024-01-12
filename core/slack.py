@@ -195,7 +195,7 @@ class Conversation(StateMachine):
         self.feedback.set_visible(True)        
 
     def on_enter_retired(self):
-        self.feedback.set_tagline("This conversation is retired and cannot be activated anymore.")  
+        self.feedback.set_tagline("This conversation has expired.")  
         
 class SlackAsyncHandler(AsyncCallbackHandler):
         

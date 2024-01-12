@@ -14,6 +14,9 @@ from slack_bolt import App, Ack, Respond
 from core.agent import agent_executor, agent_llm
 from core.slack import Conversation
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from multiprocessing import Process
+
 # --
 
 # Event API & Web API
@@ -24,23 +27,6 @@ scheduler = BackgroundScheduler()
 
 active_conversations = []
 conversation_lock = threading.Lock()
-
-# make sure conversation are retried when bot stops
-def graceful_shutdown(signum, frame):    
-    print("Shutdown bot ...")
-
-    # retire all active conversations
-    [ref["conversation"].retire() for ref in active_conversations]    
-    time.sleep(3)
-
-    # stop the scheduler
-    scheduler.shutdown(wait=False)
-
-    # stop the listener
-    socket.disconnect()
-    socket.close()
-
-    sys.exit(0)
 
 def find_conversation(thread_ts):
     with conversation_lock:
@@ -112,7 +98,7 @@ def handle_message_events(event, say):
             slack_response = client.chat_postMessage(
                 channel=response_channel, 
                 thread_ts=response_thread,
-                text=f"This conversation has been retired. Please start a new one in the main channel."
+                text=f"This conversation has expired. Please start a new one in the main channel."
             )
             
         else:
@@ -123,10 +109,56 @@ def handle_message_events(event, say):
         pass        
 
 
+class HealthcheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Sending a 200 OK response
+        self.send_response(200)
+        # Setting the header
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        # Sending the response message
+        message = "Hello, World! This is a simple HTTP server."
+        # Writing the message body
+        self.wfile.write(message.encode())
+
+def run_healthcheck():            
+    server_address = ("0.0.0.0", 8080)
+    httpd = HTTPServer(server_address, HealthcheckHandler)
+
+    print(f"Healthcheck running on {server_address}")
+    # Running the server
+    httpd.serve_forever()
+
+healthcheck_process = Process(target=run_healthcheck)
+healthcheck_process.daemon = True
+
+# make sure conversation are retried when bot stops
+def graceful_shutdown(signum, frame):    
+    print("Shutdown bot ...")
+
+    # retire all active conversations
+    [ref["conversation"].retire() for ref in active_conversations]    
+    time.sleep(3)
+
+    # stop the scheduler
+    scheduler.shutdown(wait=False)
+
+    # stop the listener
+    socket.disconnect()
+    socket.close()
+
+    healthcheck_process.join()
+
+    sys.exit(0)
+
+
 if __name__ == "__main__":
     
     signal.signal(signal.SIGINT, graceful_shutdown)
     signal.signal(signal.SIGTERM, graceful_shutdown)
+
+    # healthcheck
+    healthcheck_process.start()
 
     # scheduler reaper
     scheduler.add_job(retire_inactive_conversation, 'interval', seconds=5, id='retirement_job')
