@@ -25,3 +25,7 @@ ragas
 datasets
 tabulate
 tiktoken
+slack-bolt
+slack
+aiohttp
+httpx
