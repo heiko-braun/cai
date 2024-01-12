@@ -7,6 +7,7 @@ import os
 from core.agent import agent_executor, agent_llm
 import signal
 import sys
+import time
 
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
@@ -25,7 +26,7 @@ socket = SocketModeHandler(app, os.environ['SLACK_APP_TOKEN'])
 
 starter_message = "How can I help you?"
 
-active_conversations = {}
+active_conversations = []
 
 class StatusStrategy(ABC):
     @abstractmethod
@@ -115,15 +116,7 @@ class Conversation(StateMachine):
                 "output": "How can I help you?"
             }
             self.feedback.print("New Thread: " + str(self.thread_ts)) 
-
-    def on_exit_answered(self, text):
-        print("exit_answered ..")
-        self.lookups_total = 0
-        self.prompt_text = text          
-        
-        # display status widget
-        self.feedback.set_visible(True)                                        
-                    
+                                
 
     def on_enter_lookup(self):
         
@@ -212,16 +205,38 @@ class Conversation(StateMachine):
        
 
         self.feedback.set_visible(False)
-        
 
+    def on_exit_answered(self, text=None):
+        print("exit_answered ..")        
+        self.prompt_text = text          
+        
+        # display status widget
+        self.feedback.set_visible(True)        
+
+    def on_enter_retired(self):
+        self.feedback.set_tagline("This conversation is retired and cannot be activated anymore.")  
+        
 def graceful_shutdown(signum, frame):
-    print("Shutdown connection ...")
+    print("Shutdown bot ...")
+
+    # retire all active conversations
+    [ref["conversation"].retire() for ref in active_conversations]    
+    time.sleep(3)
+
     socket.disconnect()
     socket.close()
     sys.exit(0)
 
 memory = AgentTokenBufferMemory(llm=agent_llm)
 
+def find_conversation(thread_ts):
+
+    for ref in active_conversations:
+        if(ref["id"]==thread_ts):
+            return ref["conversation"]
+        else:
+            return None
+            
 # This gets activated when the bot is tagged in a channel    
 # it will start a new thread that will hold the conversation
 @app.event("app_mention")
@@ -241,8 +256,17 @@ def handle_message_events(body, logger):
         response_thread = body["event"]["event_ts"]
 
         # register new conversation        
-        conversation = Conversation(slack_client=client, channel=response_channel, thread_ts=response_thread)
-        active_conversations[response_thread] = conversation      
+        conversation = Conversation(
+            slack_client=client, 
+            channel=response_channel, 
+            thread_ts=response_thread
+            )
+        
+        active_conversations.append({
+            "id": response_thread, 
+            "conversation": conversation
+            })
+        
         conversation.listening()  
         
 # the main loop for interaction with the bot
@@ -253,13 +277,22 @@ def handle_message_events(event, say):
     if event.get("thread_ts"):
         # within threads we listen to messages
         print("handle message within thread")
-        text = event.get('text')
-        
+
+        text = event.get('text')                
         response_channel = event.get("channel")
         response_thread = event.get("thread_ts")
 
-        conversation = active_conversations[response_thread]
-        conversation.inquire(text)
+        conversation = find_conversation(response_thread)
+
+        if(conversation is None):
+            slack_response = client.chat_postMessage(
+                channel=response_channel, 
+                thread_ts=response_thread,
+                text=f"This conversation has been retired"
+            )
+            
+        else:
+            conversation.inquire(text)
 
     else:
         # outside thread we ingore messages
