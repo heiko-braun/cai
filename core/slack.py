@@ -48,10 +48,24 @@ class SlackStatus(StatusStrategy):
         pass  
 
     def set_tagline(self, tagline):
+
+        blocks= [
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "*"+tagline+"*"
+                    }
+                ]
+            }
+	    ]
+
         slack_response = self.client.chat_postMessage(
             channel=self.channel, 
             thread_ts=self.thread_ts,
-            text=f"{tagline}"
+            blocks=blocks,
+            text=""
             )
 
 class Conversation(StateMachine):
