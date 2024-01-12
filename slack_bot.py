@@ -83,7 +83,7 @@ def handle_message_events(body, logger):
 # the bot ignores messages outsides threads        
 @app.event("message")
 def handle_message_events(event, say):
-    
+    print(event)
     if event.get("thread_ts"):
         # within threads we listen to messages
         print("handle message within thread")
@@ -147,7 +147,7 @@ def graceful_shutdown(signum, frame):
     socket.disconnect()
     socket.close()
 
-    #healthcheck_process.join()
+    healthcheck_process.join()
 
     sys.exit(0)
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, graceful_shutdown)
 
     # healthcheck
-    #healthcheck_process.start()
+    healthcheck_process.start()
 
     # scheduler reaper
     scheduler.add_job(retire_inactive_conversation, 'interval', seconds=5, id='retirement_job')

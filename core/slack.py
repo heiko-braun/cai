@@ -69,7 +69,7 @@ class SlackStatus(StatusStrategy):
             text=f"{message}"
             )
         
-        print(slack_response)
+        #print(slack_response)
 
     def set_visible(self, is_visible):
         pass  
