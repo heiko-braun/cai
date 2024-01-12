@@ -112,7 +112,7 @@ def handle_message_events(event, say):
             slack_response = client.chat_postMessage(
                 channel=response_channel, 
                 thread_ts=response_thread,
-                text=f"This conversation has been retired. Please start a new one ine the main thread."
+                text=f"This conversation has been retired. Please start a new one in the main channel."
             )
             
         else:
