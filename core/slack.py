@@ -150,7 +150,8 @@ class Conversation(StateMachine):
             # mimic the first LLM response to get things started
             self.response_handle = {
                 "output": "How can I help you?"
-            }            
+            } 
+            self.feedback.set_tagline("ID "+self.thread_ts)           
                                 
     # starting a thinking loop    
     def on_enter_running(self):

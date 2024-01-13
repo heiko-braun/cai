@@ -26,18 +26,26 @@ socket = SocketModeHandler(app, os.environ['SLACK_APP_TOKEN'])
 scheduler = BackgroundScheduler()
 
 active_conversations = []
-conversation_lock = threading.Lock()
+conversation_lock = threading.RLock()
 
-def find_conversation(thread_ts):
+def find_conversation(channel, thread_ts):
+    
+    match = None
     with conversation_lock:
-        for ref in active_conversations:
-            if(ref["id"]==thread_ts):
-                return ref["conversation"]
-            else:
-                return None
+        for ref in active_conversations:            
+            if(ref["channel"]==channel and ref["thread"]==str(thread_ts)):
+                match = ref["conversation"]
+                break
+    return match        
         
 def retire_inactive_conversation():
-    with conversation_lock:        
+    
+    with conversation_lock:
+        print("Total conversations: "+str(len(active_conversations)))
+
+        # dump state
+        [print(ref) for ref in active_conversations]
+
         for ref in active_conversations:
             conversation = ref["conversation"]
             if(conversation.is_expired()):
@@ -46,12 +54,13 @@ def retire_inactive_conversation():
                     active_conversations.remove(ref)
                 else:
                     print("Conversation is still active, keep for next cycle: ", str(conversation))    
+    
                     
 # This gets activated when the bot is tagged in a channel    
 # it will start a new thread that will hold the conversation
 @app.event("app_mention")
 def handle_message_events(body, logger):
-        
+    
     thread_ts = body["event"].get("thread_ts")
 
     if thread_ts:
@@ -59,9 +68,7 @@ def handle_message_events(body, logger):
         pass
     else:
         # handle direct mention outside thread (in channel)
-
-        print(str(body["event"]["text"]).split(">")[1])
-        
+                
         response_channel = body["event"]["channel"]
         response_thread = body["event"]["event_ts"]
         
@@ -72,10 +79,12 @@ def handle_message_events(body, logger):
             thread_ts=response_thread
             )
         
-        active_conversations.append({
-            "id": response_thread, 
-            "conversation": conversation
-            })
+        with conversation_lock:
+            active_conversations.append({
+                "channel": response_channel,
+                "thread": str(response_thread), 
+                "conversation": conversation
+                })        
         
         conversation.listening()  
         
@@ -83,25 +92,25 @@ def handle_message_events(body, logger):
 # the bot ignores messages outsides threads        
 @app.event("message")
 def handle_message_events(event, say):
-    print(event)
+    
     if event.get("thread_ts"):
         # within threads we listen to messages
         print("handle message within thread")
-
-        text = event.get('text')                
+        
         response_channel = event.get("channel")
         response_thread = event.get("thread_ts")
 
-        conversation = find_conversation(response_thread)
+        conversation = find_conversation(response_channel, response_thread)
 
         if(conversation is None):
             slack_response = client.chat_postMessage(
                 channel=response_channel, 
                 thread_ts=response_thread,
-                text=f"This conversation has expired. Please start a new one in the main channel."
+                text=f"Cannot find conversation ({response_thread}), is it expired?"
             )
             
         else:
+            text = event.get('text')                
             conversation.inquire(text)
 
     else:
@@ -141,14 +150,12 @@ def graceful_shutdown(signum, frame):
     time.sleep(3)
 
     # stop the scheduler
-    scheduler.shutdown(wait=False)
+    scheduler.shutdown(wait=True)
 
     # stop the listener
     socket.disconnect()
     socket.close()
-
-    healthcheck_process.join()
-
+    
     sys.exit(0)
 
 
@@ -156,10 +163,7 @@ if __name__ == "__main__":
     
     signal.signal(signal.SIGINT, graceful_shutdown)
     signal.signal(signal.SIGTERM, graceful_shutdown)
-
-    # healthcheck
-    healthcheck_process.start()
-
+    
     # scheduler reaper
     scheduler.add_job(retire_inactive_conversation, 'interval', seconds=5, id='retirement_job')
     scheduler.start()
