@@ -136,10 +136,15 @@ def run_healthcheck():
 
     print(f"Healthcheck running on {server_address}")
     # Running the server
-    httpd.serve_forever()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+    
 
-healthcheck_process = Process(target=run_healthcheck)
-healthcheck_process.daemon = True
+healthcheck_process = Process(target=run_healthcheck, daemon=True)    
 
 # make sure conversation are retried when bot stops
 def graceful_shutdown(signum, frame):    
@@ -155,7 +160,9 @@ def graceful_shutdown(signum, frame):
     # stop the listener
     socket.disconnect()
     socket.close()
-    
+
+    healthcheck_process.kill()
+
     sys.exit(0)
 
 
@@ -168,6 +175,9 @@ if __name__ == "__main__":
     scheduler.add_job(retire_inactive_conversation, 'interval', seconds=5, id='retirement_job')
     scheduler.start()
 
+    # start healthecheck listener    
+    healthcheck_process.start()
+    
     # start listening for messages
     socket.start()
     
