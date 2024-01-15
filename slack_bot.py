@@ -21,6 +21,8 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
 
+import random
+
 # --
 
 # Event API & Web API
@@ -130,8 +132,24 @@ def handle_message_events(event, say):
                 conversation.listening()                                        
               
         if(conversation is not None):              
-            text = event.get('text')                
-            conversation.inquire(text)
+            if(conversation.current_state == conversation.answered):
+                text = event.get('text')                
+                conversation.inquire(text)
+            else:
+
+                business = [
+                    "Give me a minute ...",                    
+                    "Working on it ...",
+                    "Just a sec ...",
+                    "Just a moment ...",
+                    "Hang on ..."
+                ]
+                
+                client.chat_postMessage(
+                    channel=response_channel, 
+                    thread_ts=response_thread,
+                    text=random.choice(business)                
+                )
         else:
             print("Cannot find conversation")
 
