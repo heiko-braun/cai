@@ -23,6 +23,7 @@ export QDRANT_KEY="..."
 export QDRANT_URL="..."
 export COHERE_KEY="..."
 export PG_URL="..."
+export ASSISTANT_ID="..." (used with legacy impl)
 ```
 
 For the slack bot, you also need these:
