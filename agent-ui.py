@@ -92,7 +92,7 @@ if prompt := st.chat_input(placeholder=starter_message):
         st_callback = MyStreamlitCallbackHandler(
             parent_container=st.container(),
             collapse_completed_thoughts=True,
-            expand_new_thoughts=True,
+            expand_new_thoughts=False,
             max_thought_containers=4            
             )
 
