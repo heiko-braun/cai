@@ -25,6 +25,15 @@ export COHERE_KEY="..."
 export PG_URL="..."
 ```
 
+For the slack bot, you also need these:
+
+```
+export SLACK_BOT_TOKEN="..."
+export SLACK_APP_TOKEN="..."
+```
+
+(See `slack_tokens.md` as well.)
+
 ## Data Preparation
 
 ### Step 1: Prepare the local data
