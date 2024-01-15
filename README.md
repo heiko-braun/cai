@@ -11,6 +11,16 @@ pip install -r requirements.txt
 ```
 ### Prerequisites
 
+#### What do I need besides this repo?
+
+In short, you need twqo or three things to work woth the codebase:
+
+- an OpenAI API key (requires gpt-3 or gpt-4 models with *support for function calling*)
+- a postgres database (i.e. the free tier at https://aiven.io/postgresql)
+- a qdrant vector DB (i.e. the free tier at https://qdrant.tech)
+- a slack workspace and app for the slack bot
+
+
 #### API Keys
 
 All the tools and the assistant leverage 3rd party services for which you need API keys.
