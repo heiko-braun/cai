@@ -280,7 +280,13 @@ def save_session(conversation):
     try:
         conn = psycopg2.connect(os.environ['PG_URL'])
         cur = conn.cursor()
-        
+
+        cur.execute("""
+            DELETE FROM slack_sessions WHERE channel=%s AND thread=%s;            
+            """,
+            (conversation.get_channel(), conversation.get_thread())
+        )   
+
         cur.execute("""
             INSERT INTO slack_sessions (channel, thread, data)
             VALUES (%s, %s, %s);    
