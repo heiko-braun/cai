@@ -14,7 +14,7 @@ tenacity
 python-statemachine
 argparse
 cohere
-streamlit==1.29.0
+streamlit==1.30.0
 pypdf
 html2text
 tiktoken
