@@ -31,7 +31,6 @@ Make sure these are present in your environment:
 export OPENAI_API_KEY="..."
 export QDRANT_KEY="..."
 export QDRANT_URL="..."
-export COHERE_KEY="..."
 export PG_URL="..."
 export ASSISTANT_ID="..." (used with legacy impl)
 ```
