@@ -12,7 +12,11 @@ from slack_sdk import WebClient
 from slack_bolt import App, Ack, Respond
 
 from core.agent import agent_executor, agent_llm
-from core.slack import Conversation
+from core.slack import Conversation, save_session, restore_session
+
+from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
+    AgentTokenBufferMemory,
+)
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
@@ -50,17 +54,23 @@ def retire_inactive_conversation():
             conversation = ref["conversation"]
             if(conversation.is_expired()):
                 if(conversation.current_state!='answered'):            
-                    conversation.retire()
+                    handle_retirement(conversation)
                     active_conversations.remove(ref)
                 else:
                     print("Conversation is still active, keep for next cycle: ", str(conversation))    
+
+def handle_retirement(conversation):
+    # persist session
+    save_session(conversation)
+    # noity client
+    conversation.retire()                    
     
-                    
+
 # This gets activated when the bot is tagged in a channel    
 # it will start a new thread that will hold the conversation
 @app.event("app_mention")
 def handle_message_events(body, logger):
-    
+                
     thread_ts = body["event"].get("thread_ts")
 
     if thread_ts:
@@ -76,7 +86,8 @@ def handle_message_events(body, logger):
         conversation = Conversation(
             slack_client=client, 
             channel=response_channel, 
-            thread_ts=response_thread
+            thread_ts=response_thread,
+            memory=AgentTokenBufferMemory(llm=agent_llm)
             )
         
         with conversation_lock:
@@ -96,22 +107,33 @@ def handle_message_events(event, say):
     if event.get("thread_ts"):
         # within threads we listen to messages
         print("handle message within thread")
-        
+                
         response_channel = event.get("channel")
         response_thread = event.get("thread_ts")
-
-        conversation = find_conversation(response_channel, response_thread)
-
-        if(conversation is None):
-            slack_response = client.chat_postMessage(
-                channel=response_channel, 
-                thread_ts=response_thread,
-                text=f"Cannot find conversation ({response_thread}), is it expired?"
+        
+        # any active conversation?
+        conversation = find_conversation(
+            channel=response_channel, 
+            thread_ts=response_thread
             )
-            
-        else:
+                
+        if(conversation is None):            
+
+            conversation = restore_session(client, response_channel, response_thread)
+            if(conversation is not None):
+                with conversation_lock:
+                    active_conversations.append({
+                        "channel": response_channel,
+                        "thread": str(response_thread), 
+                        "conversation": conversation
+                        })    
+                conversation.listening()                                        
+              
+        if(conversation is not None):              
             text = event.get('text')                
             conversation.inquire(text)
+        else:
+            print("Cannot find conversation")
 
     else:
         # outside thread we ingore messages
@@ -143,7 +165,6 @@ def run_healthcheck():
     finally:
         httpd.server_close()
     
-
 healthcheck_process = Process(target=run_healthcheck, daemon=True)    
 
 # make sure conversation are retried when bot stops
@@ -151,7 +172,7 @@ def graceful_shutdown(signum, frame):
     print("Shutdown bot ...")
 
     # retire all active conversations
-    [ref["conversation"].retire() for ref in active_conversations]    
+    [handle_retirement(ref["conversation"]) for ref in active_conversations]    
     time.sleep(3)
 
     # stop the scheduler

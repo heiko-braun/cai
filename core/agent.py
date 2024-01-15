@@ -1,10 +1,10 @@
 
 __all__ = ['agent_executor', 'agent_llm', 'agent_memory'] 
 
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain_openai.chat_models import ChatOpenAI
 from langchain.agents import OpenAIFunctionsAgent, AgentExecutor
 
-from langchain.chat_models import ChatOpenAI
 from langchain.schema import SystemMessage
 from langchain.prompts import MessagesPlaceholder
 

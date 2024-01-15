@@ -5,6 +5,9 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
 
+from langchain.schema import messages_from_dict, messages_to_dict
+from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
+
 import datetime
 
 from abc import ABC, abstractmethod
@@ -16,6 +19,9 @@ from langchain.schema import LLMResult
 from langchain_core.messages import BaseMessage
 from uuid import UUID
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, TypeVar, Union
+
+import psycopg2
+import json
 
 # --
 
@@ -117,7 +123,7 @@ class Conversation(StateMachine):
     request_docs = running.to(lookup)
     docs_supplied = lookup.to(running)
     
-    def __init__(self, slack_client, channel, thread_ts):
+    def __init__(self, slack_client, channel, thread_ts, memory, start_message="How can I help you?"):
         
         self.last_activity = datetime.datetime.now()
         self.client = slack_client
@@ -128,30 +134,39 @@ class Conversation(StateMachine):
         self.thread_ts = thread_ts
 
         # internal states
-        self.prompt_text = None
-        self.thread = None
-        self.run = None
+        self.prompt_text = None                
+        self.start_message = start_message
         
         # the main interface towards the LLM
         self.agent = agent_executor
 
         # keeps track of previous messages
-        self.memory = AgentTokenBufferMemory(llm=agent_llm)
+        self.memory = memory
 
         # interim, runtime states
         self.response_handle = None
 
         super().__init__()
 
+    def get_channel(self):
+        return self.channel    
+
+    def get_thread(self):
+        return self.thread_ts
+    
+    def export_memory(self):
+        extracted_messages = self.memory.chat_memory.messages
+        return messages_to_dict(extracted_messages)        
+    
     def is_expired(self):
         return self.last_activity < datetime.datetime.now()-datetime.timedelta(seconds=CONVERSATION_EXPIRY_TIME)
      
     def on_enter_greeting(self):            
             # mimic the first LLM response to get things started
             self.response_handle = {
-                "output": "How can I help you?"
+                "output": self.start_message
             } 
-            self.feedback.set_tagline("ID "+self.thread_ts)           
+            self.feedback.set_tagline("New Session: "+self.thread_ts)           
                                 
     # starting a thinking loop    
     def on_enter_running(self):
@@ -256,4 +271,69 @@ class SlackAsyncHandler(AsyncCallbackHandler):
         """Run when a chat model starts running."""
         print("chat model start")
         
-     
+
+def save_session(conversation):
+        
+    json_export = json.dumps(conversation.export_memory())          
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(os.environ['PG_URL'])
+        cur = conn.cursor()
+        
+        cur.execute("""
+            INSERT INTO slack_sessions (channel, thread, data)
+            VALUES (%s, %s, %s);    
+            """,
+            (conversation.get_channel(), conversation.get_thread(), (json_export))
+        )   
+        
+        conn.commit()        
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Failed to persist session: ", str(error))        
+    finally:
+        if conn is not None:
+            conn.close()    
+
+
+def restore_session(client, channel, thread_ts):
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(os.environ['PG_URL'])
+        cur = conn.cursor()
+
+        
+        cur.execute("""
+            SELECT id, data FROM slack_sessions WHERE channel=%s AND thread=%s;            
+            """,
+            (channel, thread_ts)
+        )   
+        
+        row = cur.fetchone()        
+        data = row[1]        
+        cur.close()      
+
+        if row is not None:            
+            message_import = messages_from_dict(data)
+            message_history = ChatMessageHistory(messages=message_import)
+            
+            restored_memory = AgentTokenBufferMemory(llm=agent_llm, chat_memory=message_history)
+
+            conversation = Conversation(
+                slack_client=client, 
+                channel=channel, 
+                thread_ts=thread_ts,
+                memory=restored_memory,
+                start_message="Trying to remember what we talked about ..."
+            )
+            return conversation
+        else:
+            return None
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Failed to recover session: ", str(error))        
+    finally:
+        if conn is not None:
+            conn.close()    
