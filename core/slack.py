@@ -54,12 +54,7 @@ class SlackStatus(StatusStrategy):
         blocks= [
             {
                 "type": "context",
-                "elements": [
-                    # {
-					#     "type": "image",
-					#     "image_url": "https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-medium/1f538@2x.png",
-					#     "alt_text": "bot"
-				    # },
+                "elements": [                   
                     {
                         "type": "mrkdwn",
                         "text": "*"+message+"*"
@@ -85,12 +80,7 @@ class SlackStatus(StatusStrategy):
         blocks= [
             {
                 "type": "context",
-                "elements": [
-                    # {
-					#     "type": "image",
-					#     "image_url": "https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-medium/1f538@2x.png",
-					#     "alt_text": "bot"
-				    # },
+                "elements": [                   
                     {
                         "type": "mrkdwn",
                         "text": "*"+tagline+"*"
@@ -123,9 +113,10 @@ class Conversation(StateMachine):
     request_docs = running.to(lookup)
     docs_supplied = lookup.to(running)
     
-    def __init__(self, slack_client, channel, thread_ts, memory, start_message="How can I help you?"):
+    def __init__(self, owner, slack_client, channel, thread_ts, memory, start_message="How can I help you?"):
         
         self.last_activity = datetime.datetime.now()
+        self.owner = owner
         self.client = slack_client
         self.feedback = SlackStatus(slack_client=slack_client, channel=channel, thread_ts=thread_ts)
         self.callback_handler = SlackAsyncHandler(feedback=self.feedback)
@@ -166,7 +157,31 @@ class Conversation(StateMachine):
             self.response_handle = {
                 "output": self.start_message
             } 
-            self.feedback.set_tagline("New Session: "+self.thread_ts)           
+
+            # lookup owner
+            #user_info = self.client.users_info(user=self.owner)
+
+            # share context with thread
+            response_text = ":robot_face: New session: "+self.thread_ts+", owned by: <@"+self.owner+">"    
+            blocks = [
+               		{
+                        "type": "context",
+                        "elements": [                           
+                            {
+                                "type": "mrkdwn",
+                                "text": response_text
+                            }
+                        ]
+                    } 
+            ]    
+
+            self.client.chat_postMessage(
+                channel=self.channel, 
+                thread_ts=self.thread_ts,
+                blocks=blocks,
+                text=response_text            
+            )        
+            
                                 
     # starting a thinking loop    
     def on_enter_running(self):
@@ -211,7 +226,7 @@ class Conversation(StateMachine):
         self.feedback.set_visible(True)        
 
     def on_enter_retired(self):
-        self.feedback.set_tagline("This conversation has expired.")  
+        self.feedback.set_tagline("Session expired.")  
         
 class SlackAsyncHandler(AsyncCallbackHandler):
         
@@ -303,7 +318,7 @@ def save_session(conversation):
             conn.close()    
 
 
-def restore_session(client, channel, thread_ts):
+def restore_session(client, channel, thread_ts, owner):
     
     conn = None
     try:
@@ -328,11 +343,12 @@ def restore_session(client, channel, thread_ts):
             restored_memory = AgentTokenBufferMemory(llm=agent_llm, chat_memory=message_history)
 
             conversation = Conversation(
+                owner=owner,
                 slack_client=client, 
                 channel=channel, 
                 thread_ts=thread_ts,
                 memory=restored_memory,
-                start_message="Trying to remember what we talked about ..."
+                start_message="OK, I remember what we talked about - how can I help?"
             )
             return conversation
         else:

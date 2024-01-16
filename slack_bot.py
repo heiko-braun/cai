@@ -22,6 +22,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
 
 import random
+import re
 
 # --
 
@@ -47,19 +48,17 @@ def find_conversation(channel, thread_ts):
 def retire_inactive_conversation():
     
     with conversation_lock:
-        print("Total conversations: "+str(len(active_conversations)))
-
+        
         # dump state
-        [print(ref) for ref in active_conversations]
+        #print("Total conversations: "+str(len(active_conversations)))        
+        #[print(ref) for ref in active_conversations]
 
         for ref in active_conversations:
             conversation = ref["conversation"]
             if(conversation.is_expired()):
                 if(conversation.current_state!='answered'):            
                     handle_retirement(conversation)
-                    active_conversations.remove(ref)
-                else:
-                    print("Conversation is still active, keep for next cycle: ", str(conversation))    
+                    active_conversations.remove(ref)                
 
 def handle_retirement(conversation):
     # persist session
@@ -72,44 +71,103 @@ def handle_retirement(conversation):
 # it will start a new thread that will hold the conversation
 @app.event("app_mention")
 def handle_message_events(body, logger):
-                
-    thread_ts = body["event"].get("thread_ts")
-
-    if thread_ts:
+                    
+    thread = body["event"].get("thread_ts")
+                            
+    if thread is not None:
+        
         # handle direct mention in thread
-        pass
-    else:
-        # handle direct mention outside thread (in channel)
+        message_sender = body["event"].get("user")        
+        channel = body["event"].get("channel")
+
+        restart_pattern = re.search('@\w+> restore', body["event"]["text"]) 
+        
+        if(restart_pattern):
+                        
+            # any active conversation?
+            conversation = find_conversation(
+                channel=channel, 
+                thread_ts=thread
+                )
+           
+            if(conversation is None):            
+
+                conversation = restore_session(
+                    client=client, 
+                    channel=channel, 
+                    thread_ts=thread, 
+                    owner=message_sender
+                    )
                 
-        response_channel = body["event"]["channel"]
-        response_thread = body["event"]["event_ts"]
+                if(conversation is not None):
+                    with conversation_lock:
+                        active_conversations.append({
+                            "channel": channel,
+                            "thread": thread, 
+                            "conversation": conversation
+                            })    
+                    conversation.listening()   
+        else:
+
+            response = "Known commands are: `restore`"
+            blocks= [{
+                "type": "context",
+                "elements": [                    
+                    {
+                        "type": "mrkdwn",
+                        "text": response
+                    }
+                ]
+            }]
+            client.chat_postMessage(
+                    channel=channel, 
+                    thread_ts=thread,
+                    blocks=blocks,
+                    text=response                
+                )
+
+    else:
+        
+        # direct mention outside thread starts a new conversation within a thread
+        message_sender = body["event"]["user"]           
+        channel = body["event"]["channel"]
+        thread = body["event"]["event_ts"]
         
         # register new conversation        
         conversation = Conversation(
+            owner=message_sender,
             slack_client=client, 
-            channel=response_channel, 
-            thread_ts=response_thread,
+            channel=channel, 
+            thread_ts=thread,
             memory=AgentTokenBufferMemory(llm=agent_llm)
             )
         
         with conversation_lock:
             active_conversations.append({
-                "channel": response_channel,
-                "thread": str(response_thread), 
+                "channel": channel,
+                "thread": str(thread), 
                 "conversation": conversation
                 })        
         
         conversation.listening()  
-        
+
 # the main loop for interaction with the bot
 # the bot ignores messages outsides threads        
 @app.event("message")
-def handle_message_events(event, say):
+def handle_message_events(event):
     
+    mention_pattern = re.search('@\w+', event.get('text'))    
+    if(mention_pattern):
+        # this case is handled by @app.event("app_mention")
+        # we use direct mentions to instruct the bot within thread (i.e. to restore sessions)
+        return 
+
     if event.get("thread_ts"):
+
         # within threads we listen to messages
         print("handle message within thread")
-                
+
+        message_sender = event.get("user")        
         response_channel = event.get("channel")
         response_thread = event.get("thread_ts")
         
@@ -118,21 +176,13 @@ def handle_message_events(event, say):
             channel=response_channel, 
             thread_ts=response_thread
             )
-                
-        if(conversation is None):            
-
-            conversation = restore_session(client, response_channel, response_thread)
-            if(conversation is not None):
-                with conversation_lock:
-                    active_conversations.append({
-                        "channel": response_channel,
-                        "thread": str(response_thread), 
-                        "conversation": conversation
-                        })    
-                conversation.listening()                                        
               
-        if(conversation is not None):              
-            if(conversation.current_state == conversation.answered):
+        if(conversation is not None):  
+
+            if(conversation.owner != message_sender):
+                print("Ignore message from sender who not owner") 
+                return               
+            elif(conversation.current_state == conversation.answered):
                 text = event.get('text')                
                 conversation.inquire(text)
             else:
@@ -144,7 +194,7 @@ def handle_message_events(event, say):
                     "Just a moment ...",
                     "Hang on ..."
                 ]
-                
+
                 client.chat_postMessage(
                     channel=response_channel, 
                     thread_ts=response_thread,
@@ -154,7 +204,7 @@ def handle_message_events(event, say):
             print("Cannot find conversation")
 
     else:
-        # outside thread we ingore messages
+        # outside thread we ignore messages
         pass        
 
 
