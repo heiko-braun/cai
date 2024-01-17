@@ -156,7 +156,12 @@ def handle_message_events(body, logger):
 @app.event("message")
 def handle_message_events(event):
     
-    mention_pattern = re.search('@\w+', event.get('text'))    
+    try:
+        mention_pattern = re.search('@\w+', event.get('text'))    
+    except:
+        print("Failed to parse message body: ", str(event))
+        return
+    
     if(mention_pattern):
         # this case is handled by @app.event("app_mention")
         # we use direct mentions to instruct the bot within thread (i.e. to restore sessions)
