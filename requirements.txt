@@ -31,4 +31,4 @@ slack
 aiohttp
 httpx
 apscheduler
-chromadb
+lancedb
