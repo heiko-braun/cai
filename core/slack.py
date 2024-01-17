@@ -162,7 +162,7 @@ class Conversation(StateMachine):
             #user_info = self.client.users_info(user=self.owner)
 
             # share context with thread
-            response_text = ":robot: New session: "+self.thread_ts+", owned by: <@"+self.owner+">"    
+            response_text = ":robot_face: New session: "+self.thread_ts+", owned by: <@"+self.owner+">"    
             blocks = [
                		{
                         "type": "context",
