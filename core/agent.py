@@ -35,7 +35,7 @@ def configure_retriever(collection_name):
     
     retriever = qdrant.as_retriever(        
         search_type="mmr",
-        search_kwargs={"fetch_k":15, "k": 6, "lambda_mult":0.85}
+        search_kwargs={"fetch_k":15, "k": 5, "lambda_mult":0.85}
         ) 
         
     return retriever
