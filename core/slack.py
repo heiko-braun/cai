@@ -162,7 +162,7 @@ class Conversation(StateMachine):
             #user_info = self.client.users_info(user=self.owner)
 
             # share context with thread
-            response_text = ":robot_face: New session: "+self.thread_ts+", owned by: <@"+self.owner+">"    
+            response_text = ":robot: New session: "+self.thread_ts+", owned by: <@"+self.owner+">"    
             blocks = [
                		{
                         "type": "context",
@@ -192,15 +192,26 @@ class Conversation(StateMachine):
         self.feedback.set_tagline("Thinking ...")    
         
         # request chat completion
-        self.response_handle = self.agent(
-            {"input": self.prompt_text, "history": self.memory.buffer},
-            callbacks=[self.callback_handler],
-            include_run_info=True,
-        )
+        try:
+            self.response_handle = self.agent(
+                {"input": self.prompt_text, "history": self.memory.buffer},
+                callbacks=[self.callback_handler],
+                include_run_info=True,
+            )
 
-        self.memory.save_context({"input": self.prompt_text}, self.response_handle)
-                
+            self.memory.save_context({"input": self.prompt_text}, self.response_handle)
+        except Exception as e:
+            print("Failed to call openai (skipping ... ): ", str(e))    
+            slack_response = self.client.chat_postMessage(
+                channel=self.channel, 
+                thread_ts=self.thread_ts,
+                text=f"(An error occured during the LLM invocation)",
+                mrkdwn=True
+            )    
+        
         self.resolved()
+
+        
             
     # the assistant has resolved the question
     def on_enter_answered(self):
