@@ -32,3 +32,4 @@ aiohttp
 httpx
 apscheduler
 lancedb
+python-dotenv

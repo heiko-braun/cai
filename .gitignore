@@ -13,3 +13,4 @@ upload_examples.sh
 answers
 .ipynb_checkpoints
 docker_build_slb.sh
+.env

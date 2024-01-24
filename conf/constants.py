@@ -1,5 +1,7 @@
 import os
 import sys
+from dotenv import load_dotenv
+load_dotenv()
 
 TEXT_DIR = "./data/text/"
 PROCESSED_DIR = "./data/processed/"
