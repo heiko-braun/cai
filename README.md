@@ -32,7 +32,6 @@ export OPENAI_API_KEY="..."
 export QDRANT_KEY="..."
 export QDRANT_URL="..."
 export PG_URL="..."
-export ASSISTANT_ID="..." (used with legacy impl)
 ```
 
 For the slack bot, you also need these:
@@ -76,10 +75,17 @@ Once the process completes, you should have a meta data and vector embeddings in
 
 ## Using the assistant
 
+Web based:
+
 ```
 streamlit run agent-ui.py
 ```
 
+CLI based:
+
+```
+python agent-cli.py [-f QUESTION.txt]
+```
 [...]
 
 #### Results

@@ -241,8 +241,6 @@ class Conversation(StateMachine):
         
 class SlackAsyncHandler(AsyncCallbackHandler):
         
-    websocketaction: str = "appendtext"
-    
     def __init__( self, feedback):
         self.feedback = feedback                
     

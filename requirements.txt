@@ -33,3 +33,4 @@ httpx
 apscheduler
 lancedb
 python-dotenv
+prompt_toolkit

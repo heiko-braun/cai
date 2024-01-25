@@ -6,13 +6,6 @@ load_dotenv()
 TEXT_DIR = "./data/text/"
 PROCESSED_DIR = "./data/processed/"
 
-ASSISTANT_ID = None
-try:
-    ASSISTANT_ID = os.environ['ASSISTANT_ID']
-except KeyError:
-    print('ASSISTANT_ID is missing!')
-    sys.exit()
-
 QDRANT_KEY = None
 try:
     QDRANT_KEY = os.environ['QDRANT_KEY']
